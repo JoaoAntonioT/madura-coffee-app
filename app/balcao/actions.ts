@@ -144,3 +144,56 @@ export async function marcarComoEntregue(orderId: string) {
     return { success: false, error: error.message }
   }
 }
+
+import { MercadoPagoConfig, PaymentRefund } from 'mercadopago'
+
+export async function reembolsarPedido(orderId: string, isPartial: boolean, amountToRefund?: number) {
+  try {
+    const { data: order } = await supabase.from('orders').select('*').eq('id', orderId).single()
+    if (!order) return { success: false, error: 'Pedido não encontrado' }
+
+    const isOnline = ['pix', 'card', 'PIX', 'CREDIT_CARD'].includes(order.payment_method || '')
+
+    if (isOnline) {
+      const { data: attempt } = await supabase.from('payment_attempts')
+        .select('*')
+        .eq('order_id', orderId)
+        .not('provider_payment_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      
+      if (!attempt || !attempt.provider_payment_id) {
+         return { success: false, error: 'Nenhum ID de pagamento (MercadoPago) encontrado para estorno online.' }
+      }
+
+      const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN! })
+      const refund = new PaymentRefund(client)
+      
+      const refundData: any = { payment_id: attempt.provider_payment_id }
+      if (isPartial && amountToRefund) {
+        refundData.body = { amount: amountToRefund }
+      }
+      
+      await refund.create(refundData)
+    }
+
+    await supabase.from('orders').update({ status: 'REFUNDED' }).eq('id', orderId)
+    
+    revalidatePath('/balcao')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Erro no reembolso:', error)
+    return { success: false, error: error.message || 'Falha ao estornar' }
+  }
+}
+
+export async function reativarPedido(orderId: string) {
+  try {
+    await supabase.from('orders').update({ status: 'PAID' }).eq('id', orderId)
+    revalidatePath('/balcao')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}

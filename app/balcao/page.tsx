@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download } from 'lucide-react'
-import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue } from './actions'
+import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download, RotateCcw, AlertTriangle } from 'lucide-react'
+import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido } from './actions'
 
 // ==========================================
 // TIPAGENS
@@ -63,6 +63,8 @@ export default function Balcao() {
   
   const [historicoFilter, setHistoricoFilter] = useState<'ALL' | 'DELIVERED' | 'CANCELLED' | 'EXPIRED'>('ALL')
   const [detailModalOrder, setDetailModalOrder] = useState<Order | null>(null)
+  const [refundStep, setRefundStep] = useState<0 | 1 | 2>(0) // 0: Nenhum, 1: Escolhendo tipo, 2: Digitando valor
+  const [refundAmount, setRefundAmount] = useState('')
   const [teamMembers, setTeamMembers] = useState<{id: string, name: string}[]>([])
 
   const [busca, setBusca] = useState('')
@@ -236,6 +238,38 @@ export default function Balcao() {
     startTransition(async () => {
       const res = await marcarComoEntregue(orderId)
       if (!res.success) alert(`Erro: ${res.error}`)
+      setLoadingId(null)
+    })
+  }
+
+  const handleReativar = (orderId: string) => {
+    if (!confirm('Deseja realmente voltar este pedido para a fila (Status Pago)?')) return
+    setLoadingId(orderId)
+    startTransition(async () => {
+      const res = await reativarPedido(orderId)
+      if (!res.success) alert(`Erro: ${res.error}`)
+      else setDetailModalOrder(null)
+      setLoadingId(null)
+    })
+  }
+
+  const handleReembolsar = (orderId: string, isPartial: boolean) => {
+    let amount = undefined
+    if (isPartial) {
+      const val = parseFloat(refundAmount)
+      if (isNaN(val) || val <= 0) return alert('Digite um valor válido.')
+      amount = val
+    }
+    
+    setLoadingId(orderId)
+    startTransition(async () => {
+      const res = await reembolsarPedido(orderId, isPartial, amount)
+      if (!res.success) alert(`Erro: ${res.error}`)
+      else {
+        alert('Reembolso/Cancelamento processado com sucesso.')
+        setDetailModalOrder(null)
+        setRefundStep(0)
+      }
       setLoadingId(null)
     })
   }
@@ -649,7 +683,7 @@ export default function Balcao() {
                   </ul>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 mb-4">
                   <p className="text-xs font-bold text-gray-500 mb-2">Itens</p>
                   <ul className="space-y-1">
                     {detailModalOrder.order_items?.map((item: any) => (
@@ -658,6 +692,67 @@ export default function Balcao() {
                       </li>
                     ))}
                   </ul>
+                </div>
+
+                {/* AREA DE AÇÕES SENSÍVEIS */}
+                <div className="border-t pt-4 mt-4">
+                  {refundStep === 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => handleReativar(detailModalOrder.id)}
+                        disabled={isPending && loadingId === detailModalOrder.id}
+                        className="py-3 font-bold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 flex justify-center items-center gap-2"
+                      >
+                        <RotateCcw size={18} /> Reativar
+                      </button>
+                      <button 
+                        onClick={() => setRefundStep(1)}
+                        className="py-3 font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 flex justify-center items-center gap-2"
+                      >
+                        <AlertTriangle size={18} /> Reembolsar
+                      </button>
+                    </div>
+                  ) : refundStep === 1 ? (
+                    <div className="space-y-3">
+                      <p className="text-sm font-bold text-gray-800 text-center mb-2">Qual tipo de reembolso?</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button 
+                          onClick={() => handleReembolsar(detailModalOrder.id, false)}
+                          disabled={isPending && loadingId === detailModalOrder.id}
+                          className="py-3 font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 flex justify-center items-center gap-2"
+                        >
+                          {isPending && loadingId === detailModalOrder.id ? <Loader2 size={16} className="animate-spin" /> : 'Reembolso Total'}
+                        </button>
+                        <button 
+                          onClick={() => setRefundStep(2)}
+                          className="py-3 font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 flex justify-center items-center gap-2"
+                        >
+                          Valor Parcial
+                        </button>
+                      </div>
+                      <button onClick={() => setRefundStep(0)} className="w-full py-2 text-sm text-gray-500 font-bold hover:text-gray-700">Cancelar</button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm font-bold text-gray-800 text-center mb-2">Digite o valor a reembolsar:</p>
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        value={refundAmount} 
+                        onChange={(e) => setRefundAmount(e.target.value)} 
+                        placeholder={`Máx: R$ ${detailModalOrder.total_amount.toFixed(2)}`}
+                        className="w-full border-2 border-gray-200 rounded-lg p-3 outline-none focus:border-red-600 text-center font-bold text-lg"
+                      />
+                      <button 
+                        onClick={() => handleReembolsar(detailModalOrder.id, true)}
+                        disabled={isPending && loadingId === detailModalOrder.id}
+                        className="w-full py-3 font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 flex justify-center items-center gap-2"
+                      >
+                        {isPending && loadingId === detailModalOrder.id ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar Parcial'}
+                      </button>
+                      <button onClick={() => setRefundStep(1)} className="w-full py-2 text-sm text-gray-500 font-bold hover:text-gray-700">Voltar</button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
