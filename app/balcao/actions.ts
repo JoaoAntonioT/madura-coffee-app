@@ -129,3 +129,18 @@ export async function cancelarPedido(orderId: string) {
     return { success: false, error: error.message }
   }
 }
+
+export async function marcarComoEntregue(orderId: string) {
+  try {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'DELIVERED' })
+      .eq('id', orderId)
+
+    if (error) throw error
+    revalidatePath('/balcao')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}

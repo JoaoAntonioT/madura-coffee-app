@@ -21,6 +21,8 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   const [loadingPix, setLoadingPix] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  const [queuePosition, setQueuePosition] = useState<number | null>(null)
+
   const fetchOrder = async () => {
     const { data: orderData } = await supabase
       .from('orders')
@@ -49,6 +51,22 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   useEffect(() => {
     fetchOrder()
     
+    const channel = supabase
+      .channel(`order-${token}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `token=eq.${token}`
+        },
+        (payload) => {
+          setOrder((prev: any) => ({ ...prev, ...payload.new }))
+        }
+      )
+      .subscribe()
+    
     let interval: NodeJS.Timeout
     
     // O relógio atualiza a tela a cada 5s se estiver no PIX ou no Caixa (aguardando o barista)
@@ -59,9 +77,28 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     }
 
     return () => {
+      supabase.removeChannel(channel)
       if (interval) clearInterval(interval)
     }
-  }, [token, paymentMethod]) 
+  }, [token, paymentMethod])
+
+  useEffect(() => {
+    if (order && (order.status === 'PAID' || order.status === 'IN_PRODUCTION')) {
+      const fetchQueuePosition = async () => {
+        const { count } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .in('status', ['PAID', 'IN_PRODUCTION'])
+          .lt('created_at', order.created_at)
+          
+        if (count !== null) setQueuePosition(count)
+      }
+      
+      fetchQueuePosition()
+      const interval = setInterval(fetchQueuePosition, 10000)
+      return () => clearInterval(interval)
+    }
+  }, [order?.status, order?.created_at]) 
 
   useEffect(() => {
     if (order?.status !== 'READY') return
@@ -162,17 +199,19 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   }
 
   if (order.status === 'READY') {
-    const stopVibration = () => {
+    const handleFechar = () => {
       if (typeof window !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate(0)
       }
+      localStorage.removeItem('active_order_token')
+      window.location.href = '/'
     }
 
     return (
       <div className="fixed inset-0 z-50 bg-green-600 text-white flex flex-col items-center justify-center p-6 animate-in zoom-in duration-300">
         <button
           type="button"
-          onClick={stopVibration}
+          onClick={handleFechar}
           className="absolute top-4 right-4 text-white/80 hover:text-white text-sm font-bold border border-white/30 rounded-full px-3 py-1"
         >
           Fechar
@@ -322,13 +361,51 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
         </div>
       )}
       
-      {order.status === 'PAID' && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm text-center max-w-md w-full animate-in fade-in slide-in-from-bottom-4">
-          <div className="w-16 h-16 bg-amber-100 text-amber-900 rounded-full flex items-center justify-center mx-auto mb-4">
-            ☕
+      {(order.status === 'PAID' || order.status === 'IN_PRODUCTION') && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm max-w-md w-full animate-in fade-in slide-in-from-bottom-4">
+          <h3 className="font-black text-xl text-gray-800 mb-6 text-center">Acompanhe seu pedido</h3>
+          
+          <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
+            
+            {/* 1. Pagamento Realizado */}
+            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full border-white border-4 bg-green-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                <Check size={16} strokeWidth={3} />
+              </div>
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-green-50 p-4 rounded-xl border border-green-100 shadow-sm">
+                <h4 className="font-bold text-green-800">Pagamento realizado</h4>
+              </div>
+            </div>
+
+            {/* 2. Aguardando na Fila */}
+            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-white border-4 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 ${order.status === 'IN_PRODUCTION' ? 'bg-green-500 text-white' : 'bg-amber-500 text-white animate-pulse'}`}>
+                {order.status === 'IN_PRODUCTION' ? <Check size={16} strokeWidth={3} /> : <span className="font-bold">⏳</span>}
+              </div>
+              <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border shadow-sm ${order.status === 'IN_PRODUCTION' ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-100'}`}>
+                <h4 className={`font-bold ${order.status === 'IN_PRODUCTION' ? 'text-green-800' : 'text-amber-900'}`}>Aguardando na fila</h4>
+                {order.status === 'PAID' && queuePosition !== null && (
+                  <p className="text-sm text-amber-700 font-medium mt-1">
+                    {queuePosition === 0 ? 'Você é o próximo!' : `(${queuePosition} pedidos na frente)`}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Barista Começou */}
+            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-white border-4 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 ${order.status === 'IN_PRODUCTION' ? 'bg-blue-500 text-white animate-pulse' : 'bg-gray-200 text-gray-400'}`}>
+                {order.status === 'IN_PRODUCTION' ? '☕' : <Store size={16} />}
+              </div>
+              <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border shadow-sm ${order.status === 'IN_PRODUCTION' ? 'bg-blue-50 border-blue-100' : 'bg-gray-50 border-gray-100'}`}>
+                <h4 className={`font-bold ${order.status === 'IN_PRODUCTION' ? 'text-blue-800' : 'text-gray-500'}`}>Barista começou seu pedido</h4>
+                {order.status === 'IN_PRODUCTION' && (
+                  <p className="text-sm text-blue-600 mt-1">Em breve será chamado.</p>
+                )}
+              </div>
+            </div>
+
           </div>
-          <h3 className="font-bold text-xl text-gray-800 mb-2">Preparando seu café!</h3>
-          <p className="text-gray-600">Seu pedido já está com nossos baristas.</p>
         </div>
       )}
     </main>

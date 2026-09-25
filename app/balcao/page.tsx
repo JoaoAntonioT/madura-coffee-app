@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban } from 'lucide-react'
-import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido } from './actions'
+import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download } from 'lucide-react'
+import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue } from './actions'
 
 // ==========================================
 // TIPAGENS
@@ -56,9 +56,10 @@ export default function Balcao() {
   const [pinInput, setPinInput] = useState('')
   const [error, setError] = useState('')
   
-  const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE' | 'PRODUTOS'>('ATENDIMENTO')
+  const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE' | 'PRODUTOS' | 'HISTORICO'>('ATENDIMENTO')
   const [orders, setOrders] = useState<Order[]>([])
   const [productsList, setProductsList] = useState<ProductInfo[]>([])
+  const [historico, setHistorico] = useState<Order[]>([])
   
   const [busca, setBusca] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -86,6 +87,25 @@ export default function Balcao() {
   useEffect(() => {
     if (!user || activeTab === 'EQUIPE') return
 
+    if (activeTab === 'HISTORICO') {
+      const fetchHistorico = async () => {
+        const startOfDay = new Date()
+        startOfDay.setHours(0, 0, 0, 0)
+
+        const { data } = await supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .in('status', ['DELIVERED', 'CANCELLED', 'EXPIRED'])
+          .gte('created_at', startOfDay.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(100)
+          
+        if (data) setHistorico(data)
+      }
+      fetchHistorico()
+      return
+    }
+
     if (activeTab === 'PRODUTOS') {
       const fetchProducts = async () => {
         const { data } = await supabase.from('products').select('id, name, recipe_instructions, recipe_ingredients').order('name')
@@ -103,7 +123,7 @@ export default function Balcao() {
       const { data } = await supabase
         .from('orders')
         .select('*, order_items(*)')
-        .in('status', ['CREATED', 'PENDING', 'AWAITING_PAYMENT', 'AWAITING_MANUAL_PAYMENT', 'PAID', 'IN_PRODUCTION'])
+        .in('status', ['CREATED', 'PENDING', 'AWAITING_PAYMENT', 'AWAITING_MANUAL_PAYMENT', 'PAID', 'IN_PRODUCTION', 'READY'])
         .order('created_at', { ascending: true })
 
       if (data) {
@@ -117,7 +137,7 @@ export default function Balcao() {
         else if (activeTab === 'ATENDIMENTO') {
           filtrados = data.filter(o => 
             o.status === 'PAID' || o.status === 'IN_PRODUCTION' || 
-            o.status === 'CREATED' || o.status === 'PENDING' || o.status.includes('AWAITING')
+            o.status === 'CREATED' || o.status === 'PENDING' || o.status.includes('AWAITING') || o.status === 'READY'
           )
         }
         setOrders(filtrados)
@@ -202,6 +222,48 @@ export default function Balcao() {
     })
   }
 
+  const handleEntregar = (orderId: string) => {
+    setLoadingId(orderId)
+    startTransition(async () => {
+      const res = await marcarComoEntregue(orderId)
+      if (!res.success) alert(`Erro: ${res.error}`)
+      setLoadingId(null)
+    })
+  }
+
+  const handleExportCSV = () => {
+    if (historico.length === 0) return alert('Nenhum dado para exportar.')
+
+    const headers = ['ID', 'Cliente', 'Data/Hora', 'Status', 'Metodo Pagamento', 'Total', 'Itens']
+    
+    const rows = historico.map(order => {
+      const itensFormatados = order.order_items?.map((i: any) => `${i.quantity}x ${i.product_name}`).join(' | ') || ''
+      return [
+        `#${order.short_id}`,
+        order.customer_name,
+        new Date(order.created_at).toLocaleString('pt-BR'),
+        order.status,
+        order.payment_method || 'N/A',
+        order.total_amount.toFixed(2),
+        itensFormatados
+      ]
+    })
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `relatorio-madura-${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   // ==========================================
   // TELA DE LOGIN
   // ==========================================
@@ -233,6 +295,7 @@ export default function Balcao() {
 
   const pedidosACobrar = ordersFiltradasBusca.filter(o => o.status === 'CREATED' || o.status === 'PENDING' || o.status.includes('AWAITING'))
   const pedidosEmPreparo = ordersFiltradasBusca.filter(o => o.status === 'PAID' || o.status === 'IN_PRODUCTION')
+  const pedidosAguardandoRetirada = ordersFiltradasBusca.filter(o => o.status === 'READY')
 
   // ==========================================
   // TELA PRINCIPAL
@@ -263,6 +326,7 @@ export default function Balcao() {
           <>
             <button onClick={() => setActiveTab('PRODUTOS')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'PRODUTOS' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><Package size={20} /> Produtos & Receitas</button>
             <button onClick={() => setActiveTab('EQUIPE')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'EQUIPE' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><Users size={20} /> Equipe</button>
+            <button onClick={() => setActiveTab('HISTORICO')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'HISTORICO' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><History size={20} /> Histórico</button>
           </>
         )}
       </div>
@@ -289,7 +353,7 @@ export default function Balcao() {
 
         {/* ABA ATENDIMENTO */}
         {activeTab === 'ATENDIMENTO' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-4">
               <h2 className="font-bold text-gray-700 text-lg flex items-center gap-2">
                 <DollarSign className="text-amber-500" /> Aguardando Pagamento ({pedidosACobrar.length})
@@ -308,6 +372,16 @@ export default function Balcao() {
                 <OrderPreparoCard key={order.id} order={order} user={user} isPending={isPending} loadingId={loadingId} onAssumir={handleAssumir} onPronto={handleMarcarPronto} />
               ))}
               {pedidosEmPreparo.length === 0 && <p className="text-gray-400 text-sm italic">Nenhum pedido na fila.</p>}
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="font-bold text-gray-700 text-lg flex items-center gap-2">
+                <CheckCircle className="text-green-600" /> Aguardando Retirada ({pedidosAguardandoRetirada.length})
+              </h2>
+              {pedidosAguardandoRetirada.map(order => (
+                <OrderRetiradaCard key={order.id} order={order} isPending={isPending} loadingId={loadingId} onEntregar={handleEntregar} />
+              ))}
+              {pedidosAguardandoRetirada.length === 0 && <p className="text-gray-400 text-sm italic">Nenhum pedido pronto para entrega.</p>}
             </div>
           </div>
         )}
@@ -522,6 +596,24 @@ function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPron
           )
         )}
       </div>
+    </div>
+  )
+}
+
+function OrderRetiradaCard({ order, isPending, loadingId, onEntregar }: any) {
+  return (
+    <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500 flex flex-col gap-3 relative">
+      <div className="absolute top-2 right-4 flex items-center gap-1 text-gray-400 text-xs font-bold">
+        <Clock size={12} /> {formatTime(order.created_at)}
+      </div>
+      <div className="mt-2">
+        <h3 className="font-black text-xl text-green-700">#{order.short_id}</h3>
+        <p className="text-gray-600 font-medium text-sm">{order.customer_name}</p>
+      </div>
+
+      <button onClick={() => onEntregar(order.id)} disabled={isPending && loadingId === order.id} className="mt-2 bg-green-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2 disabled:opacity-50">
+        {isPending && loadingId === order.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Entregar Pedido
+      </button>
     </div>
   )
 }
