@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign } from 'lucide-react'
+import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard } from 'lucide-react'
+import { cadastrarMembro, confirmarPagamento, marcarPronto } from './actions'
 
 type TeamMember = {
   id: string
@@ -25,19 +26,23 @@ export default function Balcao() {
   const [pinInput, setPinInput] = useState('')
   const [error, setError] = useState('')
   
-  const [activeTab, setActiveTab] = useState<'CAIXA' | 'PREPARO' | 'EQUIPE'>('PREPARO')
+  // Nova aba ATENDIMENTO adicionada
+  const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE'>('ATENDIMENTO')
   const [orders, setOrders] = useState<Order[]>([])
+  
+  const [isPending, startTransition] = useTransition()
+  const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  // Verifica login salvo
+  // Verifica login salvo e direciona para a aba principal de cada cargo
   useEffect(() => {
     const savedUser = localStorage.getItem('balcao_user')
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser)
       setUser(parsedUser)
-      // Direciona para a aba certa baseada na profissão
-      if (parsedUser.role === 'VENDEDOR') setActiveTab('CAIXA')
+      
+      if (parsedUser.role === 'VENDEDOR') setActiveTab('ATENDIMENTO')
       else if (parsedUser.role === 'BARISTA') setActiveTab('PREPARO')
-      else setActiveTab('CAIXA') // Admin
+      else setActiveTab('ATENDIMENTO') // Admin
     }
   }, [])
 
@@ -48,13 +53,15 @@ export default function Balcao() {
     const fetchOrders = async () => {
       let query = supabase.from('orders').select('*').order('created_at', { ascending: true })
 
-      // Se estiver no CAIXA, busca só quem quer pagar no balcão
       if (activeTab === 'CAIXA') {
         query = query.eq('status', 'AWAITING_PAYMENT').eq('payment_method', 'manual')
       } 
-      // Se estiver no PREPARO, busca só quem já pagou
       else if (activeTab === 'PREPARO') {
         query = query.eq('status', 'PAID')
+      }
+      else if (activeTab === 'ATENDIMENTO') {
+        // Busca tanto os manuais pendentes quanto os pagos na fila
+        query = query.or('status.eq.PAID,and(status.eq.AWAITING_PAYMENT,payment_method.eq.manual)')
       }
       
       const { data } = await query
@@ -77,9 +84,10 @@ export default function Balcao() {
       setUser(data)
       localStorage.setItem('balcao_user', JSON.stringify(data))
       setPinInput('')
-      if (data.role === 'VENDEDOR') setActiveTab('CAIXA')
+      
+      if (data.role === 'VENDEDOR') setActiveTab('ATENDIMENTO')
       else if (data.role === 'BARISTA') setActiveTab('PREPARO')
-      else setActiveTab('CAIXA')
+      else setActiveTab('ATENDIMENTO')
     } else {
       setError('PIN incorreto ou não encontrado.')
     }
@@ -90,12 +98,50 @@ export default function Balcao() {
     localStorage.removeItem('balcao_user')
   }
 
+  // Ações via Server Actions
+  const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const form = e.currentTarget
+    const formData = new FormData(form)
+
+    startTransition(async () => {
+      const res = await cadastrarMembro(formData)
+      if (res.success) {
+        alert('Membro cadastrado com sucesso!')
+        form.reset()
+      } else {
+        alert(`Erro: ${res.error}`)
+      }
+    })
+  }
+
+  const handleConfirmarPagamento = (orderId: string) => {
+    setLoadingId(orderId)
+    startTransition(async () => {
+      const res = await confirmarPagamento(orderId)
+      if (!res.success) alert(`Erro: ${res.error}`)
+      else setOrders(prev => prev.filter(o => o.id !== orderId))
+      setLoadingId(null)
+    })
+  }
+
+  const handleMarcarPronto = (orderId: string) => {
+    setLoadingId(orderId)
+    startTransition(async () => {
+      const res = await marcarPronto(orderId)
+      if (!res.success) alert(`Erro: ${res.error}`)
+      else setOrders(prev => prev.filter(o => o.id !== orderId))
+      setLoadingId(null)
+    })
+  }
+
   // ==========================================
   // TELA DE LOGIN
   // ==========================================
   if (!user) {
     return (
       <div className="min-h-screen bg-amber-900 flex items-center justify-center p-4">
+        {/* ... (Seu código de login continua o mesmo) ... */}
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center">
           <div className="w-16 h-16 bg-amber-100 text-amber-900 rounded-full flex items-center justify-center mx-auto mb-6">
             <Lock size={32} />
@@ -123,6 +169,10 @@ export default function Balcao() {
     )
   }
 
+  // Divisão das listas para a aba de Atendimento
+  const pedidosACobrar = orders.filter(o => o.status === 'AWAITING_PAYMENT')
+  const pedidosEmPreparo = orders.filter(o => o.status === 'PAID')
+
   // ==========================================
   // TELA DA CENTRAL DE OPERAÇÕES
   // ==========================================
@@ -143,8 +193,19 @@ export default function Balcao() {
         </button>
       </header>
 
-      {/* MENU DE NAVEGAÇÃO SUPERIOR - ADAPTÁVEL POR CARGO */}
+      {/* MENU SUPERIOR BASEADO EM REGRAS (RBAC) */}
       <div className="bg-white border-b flex px-2 overflow-x-auto">
+        
+        {/* TODOS VEEM A ABA ATENDIMENTO (Visão Geral) */}
+        <button 
+          onClick={() => setActiveTab('ATENDIMENTO')}
+          className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'ATENDIMENTO' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'
+          }`}
+        >
+          <LayoutDashboard size={20} /> Visão de Atendimento
+        </button>
+
         {(user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
           <button 
             onClick={() => setActiveTab('CAIXA')}
@@ -152,7 +213,7 @@ export default function Balcao() {
               activeTab === 'CAIXA' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'
             }`}
           >
-            <DollarSign size={20} /> Cobranças (Caixa)
+            <DollarSign size={20} /> Caixa Rápido
           </button>
         )}
 
@@ -179,61 +240,146 @@ export default function Balcao() {
         )}
       </div>
 
-      {/* CONTEÚDO */}
-      <main className="p-4 flex-1">
+      <main className="p-4 flex-1 w-full mx-auto max-w-7xl">
         
-        {/* ABA CAIXA (SÓ VENDEDOR E ADMIN) */}
-        {activeTab === 'CAIXA' && (
-          <div className="space-y-4">
-            <h2 className="font-bold text-gray-700 mb-4 text-lg">Pedidos aguardando pagamento no balcão:</h2>
-            {orders.length === 0 ? (
-              <p className="text-center text-gray-400 py-8">Nenhuma cobrança pendente.</p>
-            ) : (
-              orders.map(order => (
+        {/* ABA ATENDIMENTO (VISÃO GERAL DO SALÃO) */}
+        {activeTab === 'ATENDIMENTO' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Coluna 1: A Cobrar (Foco do Vendedor) */}
+            <div className="space-y-4">
+              <h2 className="font-bold text-gray-700 text-lg flex items-center gap-2">
+                <DollarSign className="text-amber-500" /> Aguardando Pagamento ({pedidosACobrar.length})
+              </h2>
+              {pedidosACobrar.map(order => (
                 <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-500 flex justify-between items-center">
                   <div>
-                    <h3 className="font-black text-2xl text-amber-900">#{order.short_id}</h3>
-                    <p className="text-gray-600 font-medium">{order.customer_name}</p>
-                    <p className="text-lg font-black text-gray-800 mt-1">R$ {order.total_amount.toFixed(2)}</p>
+                    <h3 className="font-black text-xl text-amber-900">#{order.short_id}</h3>
+                    <p className="text-gray-600 font-medium text-sm">{order.customer_name}</p>
+                    <p className="text-md font-black text-gray-800 mt-1">R$ {order.total_amount.toFixed(2)}</p>
                   </div>
-                  <button className="bg-green-600 text-white px-4 py-3 rounded-lg flex flex-col items-center font-bold hover:bg-green-700 transition">
-                    <CheckCircle size={24} className="mb-1" /> 
-                    Confirmar<br/>Recebimento
-                  </button>
+                  {/* Botão visível apenas se o usuário tiver permissão */}
+                  {(user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
+                    <button 
+                      onClick={() => handleConfirmarPagamento(order.id)}
+                      disabled={isPending && loadingId === order.id}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isPending && loadingId === order.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />} 
+                      Receber
+                    </button>
+                  )}
                 </div>
-              ))
-            )}
-          </div>
-        )}
+              ))}
+            </div>
 
-        {/* ABA PREPARO (SÓ BARISTA E ADMIN) */}
-        {activeTab === 'PREPARO' && (
-          <div className="space-y-4">
-            <h2 className="font-bold text-gray-700 mb-4 text-lg">Cafés já pagos aguardando preparo:</h2>
-            {orders.length === 0 ? (
-              <p className="text-center text-gray-400 py-8">Fila limpa! Nenhum pedido pendente.</p>
-            ) : (
-              orders.map(order => (
+            {/* Coluna 2: Fila de Produção (Foco do Barista) */}
+            <div className="space-y-4">
+              <h2 className="font-bold text-gray-700 text-lg flex items-center gap-2">
+                <Coffee className="text-amber-900" /> Em Produção ({pedidosEmPreparo.length})
+              </h2>
+              {pedidosEmPreparo.map(order => (
                 <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-900 flex justify-between items-center">
                   <div>
                     <h3 className="font-black text-xl text-gray-800">#{order.short_id}</h3>
-                    <p className="text-gray-600 font-medium">{order.customer_name}</p>
+                    <p className="text-gray-600 font-medium text-sm">{order.customer_name}</p>
                   </div>
-                  <button className="bg-amber-900 text-white p-3 rounded-lg flex gap-2 font-bold hover:bg-amber-800 transition">
-                    <Coffee size={20} /> 
-                    Marcar como Pronto
-                  </button>
+                  {/* Botão visível apenas se o usuário tiver permissão */}
+                  {(user.role === 'ADMIN' || user.role === 'BARISTA') && (
+                    <button 
+                      onClick={() => handleMarcarPronto(order.id)}
+                      disabled={isPending && loadingId === order.id}
+                      className="bg-amber-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-800 transition disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isPending && loadingId === order.id ? <Loader2 size={16} className="animate-spin" /> : <Coffee size={16} />} 
+                      Pronto
+                    </button>
+                  )}
                 </div>
-              ))
-            )}
+              ))}
+            </div>
+            
           </div>
         )}
 
-        {/* ABA EQUIPE (SÓ ADMIN) */}
+        {/* ABA CAIXA (ISOLADA) */}
+        {activeTab === 'CAIXA' && (
+          <div className="space-y-4 max-w-3xl mx-auto">
+            {orders.map(order => (
+              <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-500 flex justify-between items-center flex-wrap gap-4">
+                <div>
+                  <h3 className="font-black text-2xl text-amber-900">#{order.short_id}</h3>
+                  <p className="text-gray-600 font-medium">{order.customer_name}</p>
+                  <p className="text-lg font-black text-gray-800 mt-1">R$ {order.total_amount.toFixed(2)}</p>
+                </div>
+                <button 
+                  onClick={() => handleConfirmarPagamento(order.id)}
+                  disabled={isPending && loadingId === order.id}
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-bold hover:bg-green-700 transition disabled:opacity-50"
+                >
+                  {isPending && loadingId === order.id ? <Loader2 className="animate-spin" /> : <CheckCircle />} 
+                  Confirmar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ABA PREPARO (ISOLADA) */}
+        {activeTab === 'PREPARO' && (
+          <div className="space-y-4 max-w-3xl mx-auto">
+            {orders.map(order => (
+              <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-900 flex justify-between items-center flex-wrap gap-4">
+                <div>
+                  <h3 className="font-black text-xl text-gray-800">#{order.short_id}</h3>
+                  <p className="text-gray-600 font-medium">{order.customer_name}</p>
+                </div>
+                <button 
+                  onClick={() => handleMarcarPronto(order.id)}
+                  disabled={isPending && loadingId === order.id}
+                  className="bg-amber-900 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-bold hover:bg-amber-800 transition disabled:opacity-50"
+                >
+                  {isPending && loadingId === order.id ? <Loader2 className="animate-spin" /> : <Coffee />} 
+                  Pronto
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ABA EQUIPE */}
         {activeTab === 'EQUIPE' && (
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <h2 className="font-bold text-lg mb-4 text-gray-800">Gerenciar Time</h2>
-            <p className="text-gray-500 text-sm">O formulário de cadastro de Baristas e Vendedores entrará aqui no próximo passo!</p>
+          <div className="bg-white p-6 rounded-xl shadow-sm max-w-md mx-auto border">
+             {/* ... (Seu formulário de cadastro que já fizemos continua igual aqui) ... */}
+            <div className="flex items-center gap-2 mb-6 border-b pb-4">
+              <UserPlus className="text-amber-900" size={24} />
+              <h2 className="text-xl font-black text-gray-800">Cadastrar Operador</h2>
+            </div>
+
+            <form onSubmit={handleCadastro} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Nome Completo</label>
+                <input name="name" type="text" required className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 focus:outline-none" placeholder="Ex: Maria Vendedora"/>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">PIN de Acesso (6 dígitos)</label>
+                <input name="pin" type="password" pattern="[0-9]*" inputMode="numeric" required maxLength={6} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 focus:outline-none" placeholder="******"/>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Cargo / Permissão</label>
+                <select name="role" required className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 focus:outline-none bg-white">
+                  <option value="BARISTA">Barista (Fila de Preparo)</option>
+                  <option value="VENDEDOR">Vendedor (Cobranças)</option>
+                  <option value="ADMIN">Administrador (Acesso Total)</option>
+                </select>
+              </div>
+
+              <button type="submit" disabled={isPending} className="w-full bg-amber-900 text-white font-black py-4 rounded-lg flex items-center justify-center gap-2 mt-4 disabled:opacity-70 hover:bg-amber-800 transition-colors">
+                {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Cadastrar Membro'}
+              </button>
+            </form>
           </div>
         )}
 
