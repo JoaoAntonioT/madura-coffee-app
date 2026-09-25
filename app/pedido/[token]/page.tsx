@@ -4,9 +4,7 @@ import { useEffect, useState, use } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { Copy, Check, QrCode } from 'lucide-react'
 
-// Note que o tipo do params mudou para Promise
 export default function OrderStatus({ params }: { params: Promise<{ token: string }> }) {
-  // Aqui nós "desempacotamos" o token de forma segura para o Next.js mais recente!
   const { token } = use(params)
 
   const [order, setOrder] = useState<any>(null)
@@ -14,31 +12,45 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   const [loadingPix, setLoadingPix] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  // 1. Busca os dados do pedido ao abrir a tela
+  // 1. Busca os dados do pedido e do PIX pendente
   const fetchOrder = async () => {
-    const { data } = await supabase
+    // Busca o Pedido
+    const { data: orderData } = await supabase
       .from('orders')
       .select('*')
-      .eq('token', token) // Usa o token desempacotado
+      .eq('token', token)
       .single()
     
-    if (data) setOrder(data)
-    return data
+    if (orderData) {
+      setOrder(orderData)
+      
+      // MÁGICA AQUI: Se o pedido está aguardando, busca se já tem QR Code gerado
+      if (orderData.status === 'AWAITING_PAYMENT') {
+        const { data: pix } = await supabase
+          .from('payment_attempts')
+          .select('*')
+          .eq('order_id', orderData.id)
+          .eq('status', 'PENDING')
+          .single()
+
+        if (pix && pix.qr_code) {
+          setPixData({ qr_code: pix.qr_code, qr_code_base64: pix.qr_code_base64 })
+        }
+      }
+    }
   }
 
   useEffect(() => {
     fetchOrder()
 
-    // 2. Configura a verificação automática (Polling) a cada 5 segundos
+    // Polling a cada 5 segundos
     const interval = setInterval(() => {
       fetchOrder()
     }, 5000)
 
-    // Limpa o intervalo se o cliente sair da página
     return () => clearInterval(interval)
-  }, [token]) // Reage a mudanças no token desempacotado
+  }, [token])
 
-  // 3. Função para pedir o PIX para o nosso backend
   const handleGeneratePix = async () => {
     if (!order) return
     setLoadingPix(true)
@@ -63,7 +75,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     }
   }
 
-  // 4. Função do botão Copia e Cola
   const handleCopyPix = () => {
     if (pixData) {
       navigator.clipboard.writeText(pixData.qr_code)
@@ -87,12 +98,10 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-start p-4 pt-8">
       
-      {/* Cabelhaço do Pedido */}
       <div className="bg-white p-6 rounded-2xl shadow-sm text-center max-w-md w-full border-t-4 border-amber-900 mb-4">
         <h1 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Pedido #{order.short_id}</h1>
         <h2 className="text-xl font-black text-gray-800 mb-2">Olá, {order.customer_name}!</h2>
         
-        {/* Status Visual */}
         {order.status === 'AWAITING_PAYMENT' && (
           <div className="bg-yellow-50 text-yellow-700 font-bold p-3 rounded-lg flex items-center justify-center gap-2">
             ⏳ Aguardando Pagamento
@@ -105,7 +114,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
         )}
       </div>
 
-      {/* Seção de Pagamento PIX */}
       {order.status === 'AWAITING_PAYMENT' && (
         <div className="bg-white p-6 rounded-2xl shadow-sm text-center max-w-md w-full">
           <p className="text-gray-600 mb-2">Total a pagar</p>
@@ -122,7 +130,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
             </button>
           ) : (
             <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
-              {/* Imagem do QR Code */}
               <div className="bg-gray-100 p-4 rounded-xl">
                 <img 
                   src={`data:image/jpeg;base64,${pixData.qr_code_base64}`} 
@@ -132,7 +139,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
               </div>
               <p className="text-sm text-gray-500">Escaneie o QR Code ou copie o código abaixo:</p>
               
-              {/* Botão Copiar */}
               <button 
                 onClick={handleCopyPix}
                 className={`w-full font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors ${
@@ -151,7 +157,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
         </div>
       )}
       
-      {/* Seção de Produção (Aparece após pagar) */}
       {order.status === 'PAID' && (
         <div className="bg-white p-6 rounded-2xl shadow-sm text-center max-w-md w-full animate-in fade-in slide-in-from-bottom-4">
           <div className="w-16 h-16 bg-amber-100 text-amber-900 rounded-full flex items-center justify-center mx-auto mb-4">

@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import { MercadoPagoConfig, Payment } from 'mercadopago'
 import { createClient } from '@supabase/supabase-js'
 
-// Nosso banco de dados
+// Nosso banco de dados (COM A CHAVE MESTRA AGORA)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // <- Mudou aqui!
 )
 
 // Nosso acesso ao Mercado Pago
