@@ -2,13 +2,27 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard } from 'lucide-react'
-import { cadastrarMembro, confirmarPagamento, marcarPronto } from './actions'
+import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, ChevronDown } from 'lucide-react'
+import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto } from './actions'
+
 
 type TeamMember = {
   id: string
   name: string
   role: 'ADMIN' | 'BARISTA' | 'VENDEDOR'
+}
+
+type ProductInfo = {
+  id: string
+  name: string
+  recipe_instructions: string | null
+}
+
+type OrderItemInfo = {
+  order_id: string
+  product_id: string
+  product_name: string
+  quantity: number
 }
 
 type Order = {
@@ -27,8 +41,12 @@ export default function Balcao() {
   const [error, setError] = useState('')
   
   // Nova aba ATENDIMENTO adicionada
-  const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE'>('ATENDIMENTO')
+  const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE' | 'PRODUTOS'>('ATENDIMENTO')
   const [orders, setOrders] = useState<Order[]>([])
+  
+  const [productsList, setProductsList] = useState<ProductInfo[]>([])
+  const [orderItems, setOrderItems] = useState<OrderItemInfo[]>([])
+  const [expandedRecipeOrderId, setExpandedRecipeOrderId] = useState<string | null>(null)
   
   const [isPending, startTransition] = useTransition()
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -45,9 +63,23 @@ export default function Balcao() {
       else setActiveTab('ATENDIMENTO') // Admin
     }
   }, [])
+  
 
   // Relógio que busca os pedidos a cada 5 segundos dependendo da aba
   useEffect(() => {
+    if (!user) return
+
+    // Busca os produtos para a aba de administração e a fila de preparo
+    if (activeTab === 'PRODUTOS' || activeTab === 'PREPARO') {
+      const fetchProducts = async () => {
+        const { data } = await supabase.from('products').select('id, name, recipe_instructions').order('name')
+        if (data) setProductsList(data)
+      }
+      fetchProducts()
+    }
+
+    if (activeTab === 'PRODUTOS') return
+    
     if (!user || activeTab === 'EQUIPE') return
 
     const fetchOrders = async () => {
@@ -66,6 +98,14 @@ export default function Balcao() {
       
       const { data } = await query
       if (data) setOrders(data)
+
+      if (activeTab === 'PREPARO') {
+        const { data: itemData } = await supabase
+          .from('order_items')
+          .select('order_id, product_id, product_name, quantity')
+          .in('order_id', data?.map(order => order.id) ?? [])
+        if (itemData) setOrderItems(itemData)
+      }
     }
 
     fetchOrders()
@@ -238,6 +278,17 @@ export default function Balcao() {
             <Users size={20} /> Equipe
           </button>
         )}
+
+        {user.role === 'ADMIN' && (
+          <button 
+            onClick={() => setActiveTab('PRODUTOS')}
+            className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === 'PRODUTOS' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'
+            }`}
+          >
+            <Package size={20} /> Cardápio / Receitas
+          </button>
+        )}
       </div>
 
       <main className="p-4 flex-1 w-full mx-auto max-w-7xl">
@@ -333,15 +384,36 @@ export default function Balcao() {
                 <div>
                   <h3 className="font-black text-xl text-gray-800">#{order.short_id}</h3>
                   <p className="text-gray-600 font-medium">{order.customer_name}</p>
+                  {expandedRecipeOrderId === order.id && (
+                    <div className="mt-3 space-y-2 text-sm text-gray-700">
+                      {orderItems.filter(item => item.order_id === order.id).map(item => {
+                        const product = productsList.find(productInfo => productInfo.id === item.product_id)
+                        return (
+                          <div key={item.product_id}>
+                            <p className="font-bold">{item.quantity}x {item.product_name}</p>
+                            <p>{product?.recipe_instructions || 'Receita ainda não cadastrada.'}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
-                <button 
-                  onClick={() => handleMarcarPronto(order.id)}
-                  disabled={isPending && loadingId === order.id}
-                  className="bg-amber-900 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-bold hover:bg-amber-800 transition disabled:opacity-50"
-                >
-                  {isPending && loadingId === order.id ? <Loader2 className="animate-spin" /> : <Coffee />} 
-                  Pronto
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setExpandedRecipeOrderId(current => current === order.id ? null : order.id)}
+                    className="border border-amber-900 text-amber-900 px-3 py-2 rounded-lg text-sm font-bold hover:bg-amber-50 transition flex items-center gap-1"
+                  >
+                    Ver Receita <ChevronDown size={16} className={expandedRecipeOrderId === order.id ? 'rotate-180' : ''} />
+                  </button>
+                  <button 
+                    onClick={() => handleMarcarPronto(order.id)}
+                    disabled={isPending && loadingId === order.id}
+                    className="bg-amber-900 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-bold hover:bg-amber-800 transition disabled:opacity-50"
+                  >
+                    {isPending && loadingId === order.id ? <Loader2 className="animate-spin" /> : <Coffee />} 
+                    Pronto
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -380,6 +452,50 @@ export default function Balcao() {
                 {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Cadastrar Membro'}
               </button>
             </form>
+          </div>
+        )}
+
+        {/* ABA PRODUTOS (SÓ ADMIN) */}
+        {activeTab === 'PRODUTOS' && (
+          <div className="space-y-4 max-w-4xl mx-auto">
+            <h2 className="font-bold text-gray-700 text-lg flex items-center gap-2 mb-6">
+              <Package className="text-amber-900" /> Cadastrar Modo de Preparo
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {productsList.map(product => (
+                <form
+                  key={product.id}
+                  className="bg-white p-5 rounded-xl shadow-sm border"
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    const form = e.currentTarget
+                    const recipeText = (form.elements.namedItem('recipe') as HTMLTextAreaElement).value
+
+                    const res = await atualizarReceitaProduto(product.id, recipeText)
+                    if (res.success) {
+                      setProductsList(current => current.map(item => item.id === product.id
+                        ? { ...item, recipe_instructions: recipeText }
+                        : item
+                      ))
+                      alert('Receita salva!')
+                    } else alert('Erro ao salvar receita')
+                  }}
+                >
+                  <h3 className="font-black text-gray-800 text-lg mb-2">{product.name}</h3>
+                  <textarea
+                    name="recipe"
+                    defaultValue={product.recipe_instructions || ''}
+                    placeholder="Ex: 150ml de leite, 30g de base..."
+                    className="w-full border-2 border-gray-100 rounded-lg p-3 text-sm focus:border-amber-900 outline-none resize-none mb-3 bg-gray-50"
+                    rows={4}
+                  />
+                  <button type="submit" className="w-full bg-gray-900 text-white font-bold py-2 rounded-lg hover:bg-black transition">
+                    Salvar Receita
+                  </button>
+                </form>
+              ))}
+            </div>
           </div>
         )}
 
