@@ -91,3 +91,20 @@ export async function atualizarReceitaProduto(productId: string, instructions: s
     return { success: false, error: error.message }
   }
 }
+export async function limparPedidosExpirados() {
+  try {
+    
+    const limiteExpiracao = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+
+    // Atualiza para EXPIRED pedidos que estão em CREATED, PENDING, AWAITING_PAYMENT ou AWAITING_MANUAL_PAYMENT e que foram criados há mais de 15 minutos
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'EXPIRED' })
+      .in('status', ['CREATED', 'PENDING', 'AWAITING_PAYMENT', 'AWAITING_MANUAL_PAYMENT'])
+      .lt('created_at', limiteExpiracao)
+
+    if (error) throw error
+  } catch (error) {
+    console.error('Erro ao limpar pedidos expirados:', error)
+  }
+}
