@@ -3,21 +3,16 @@
 import { useEffect, useState, use } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { Copy, Check, QrCode, CreditCard } from 'lucide-react'
-// Importamos o SDK do Mercado Pago
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react'
 
-// Inicializa a conexão visual com a sua Chave Pública
 initMercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY!)
 
 export default function OrderStatus({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
 
   const [order, setOrder] = useState<any>(null)
-  
-  // Controle das abas
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix')
   
-  // Estados do PIX
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null)
   const [loadingPix, setLoadingPix] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -47,15 +42,26 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     }
   }
 
+  // --- O SEGREDO ESTÁ AQUI NA CORREÇÃO DO RELÓGIO ---
   useEffect(() => {
     fetchOrder()
-    const interval = setInterval(() => {
-      fetchOrder()
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [token])
+    
+    let interval: NodeJS.Timeout
+    
+    // Só liga o relógio de atualização se estiver na aba do PIX
+    if (paymentMethod === 'pix') {
+      interval = setInterval(() => {
+        fetchOrder()
+      }, 5000)
+    }
 
-  // --- FUNÇÕES DO PIX ---
+    // Limpa o relógio sempre que o cliente trocar de aba ou sair da página
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [token, paymentMethod]) 
+  // ---------------------------------------------------
+
   const handleGeneratePix = async () => {
     if (!order) return
     setLoadingPix(true)
@@ -83,14 +89,13 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     }
   }
 
-  // --- CONFIGURAÇÃO DO TIJOLO (BRICK) DE CARTÃO ---
   const initialization = {
     amount: order?.total_amount || 0,
   }
 
   const customization = {
     paymentMethods: {
-      creditCard: 'all' as any, // Habilita todos os cartões de crédito
+      creditCard: 'all' as any,
     },
   }
 
@@ -107,7 +112,8 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
             alert('Erro ao processar: ' + data.error)
             reject()
           } else {
-            // Se aprovado, a nossa verificação de 5s vai notar a mudança e atualizar a tela!
+            // CORREÇÃO: Como o relógio está desligado, forçamos a tela atualizar manualmente aqui
+            fetchOrder()
             resolve()
           }
         })
@@ -134,7 +140,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-start p-4 pt-8 pb-24">
       
-      {/* Cabeçalho do Pedido */}
       <div className="bg-white p-6 rounded-2xl shadow-sm text-center max-w-md w-full border-t-4 border-amber-900 mb-4">
         <h1 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Pedido #{order.short_id}</h1>
         <h2 className="text-xl font-black text-gray-800 mb-2">Olá, {order.customer_name}!</h2>
@@ -156,7 +161,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
           <p className="text-gray-600 mb-2">Total a pagar</p>
           <p className="text-3xl font-black text-amber-900 mb-6">{formatPrice(order.total_amount)}</p>
 
-          {/* Controle de Abas */}
           <div className="flex gap-2 w-full mb-6 p-1 bg-gray-100 rounded-xl">
             <button 
               onClick={() => setPaymentMethod('pix')}
@@ -176,7 +180,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
             </button>
           </div>
 
-          {/* ABA: PIX */}
           {paymentMethod === 'pix' && (
             <div className="animate-in fade-in slide-in-from-left-2 duration-300">
               {!pixData ? (
@@ -213,7 +216,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
             </div>
           )}
 
-          {/* ABA: CARTÃO DE CRÉDITO */}
           {paymentMethod === 'card' && (
             <div className="animate-in fade-in slide-in-from-right-2 duration-300 text-left">
               <Payment
@@ -227,7 +229,6 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
         </div>
       )}
       
-      {/* Tela de Sucesso */}
       {order.status === 'PAID' && (
         <div className="bg-white p-6 rounded-2xl shadow-sm text-center max-w-md w-full animate-in fade-in slide-in-from-bottom-4">
           <div className="w-16 h-16 bg-amber-100 text-amber-900 rounded-full flex items-center justify-center mx-auto mb-4">
