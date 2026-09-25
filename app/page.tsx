@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, X, ShoppingBag } from 'lucide-react'
+import { Plus, X, ShoppingBag, ArrowRight } from 'lucide-react'
 import { useCartStore } from '../lib/store'
 import Link from 'next/link'
 
@@ -23,16 +23,21 @@ export default function Menu() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   
-  // Estado para controlar o modal de adicionar ao carrinho
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [observation, setObservation] = useState('')
+  const [activeToken, setActiveToken] = useState<string | null>(null)
 
-  // Puxando as funções do nosso carrinho (Zustand)
   const addItem = useCartStore(state => state.addItem)
   const totalItems = useCartStore(state => state.totalItems())
   const totalPrice = useCartStore(state => state.totalPrice())
 
   useEffect(() => {
+    // 1. Verifica se o cliente tem um pedido em andamento salvo no celular
+    const token = localStorage.getItem('active_order_token')
+    if (token) {
+      setActiveToken(token)
+    }
+
     async function fetchMenu() {
       const { data } = await supabase
         .from('categories')
@@ -73,6 +78,14 @@ export default function Menu() {
 
   return (
     <main className="min-h-screen bg-gray-50 pb-24 relative">
+      
+      {/* ALERTA DE PEDIDO ATIVO */}
+      {activeToken && (
+        <Link href={`/pedido/${activeToken}`} className="bg-blue-600 text-white p-3 flex items-center justify-center gap-2 font-bold text-sm shadow-md animate-in slide-in-from-top-4">
+          Você tem um pedido em andamento! Acompanhar <ArrowRight size={16} />
+        </Link>
+      )}
+
       <header className="bg-amber-900 text-white p-4 sticky top-0 z-10 shadow-md">
         <h1 className="text-xl font-bold text-center">MADURA COFFEE</h1>
       </header>
@@ -110,7 +123,6 @@ export default function Menu() {
         ))}
       </div>
 
-      {/* Modal de Observação */}
       {selectedProduct && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom-4">
@@ -145,7 +157,6 @@ export default function Menu() {
         </div>
       )}
 
-      {/* Barra Flutuante do Carrinho (Só aparece se tiver itens) */}
       {totalItems > 0 && (
         <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto z-40">
           <Link href="/checkout" className="bg-amber-900 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between hover:bg-amber-800 transition-transform active:scale-95">
