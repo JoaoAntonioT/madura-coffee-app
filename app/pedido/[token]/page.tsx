@@ -2,16 +2,20 @@
 
 import { useEffect, useState, use } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { Copy, Check, QrCode, CreditCard } from 'lucide-react'
+import { Copy, Check, QrCode, CreditCard, Store } from 'lucide-react'
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react'
 
-initMercadoPago(process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY!)
+// Proteção: Só inicializa se a chave existir, evitando crash na Vercel (Erro 500)
+const mpPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY
+if (mpPublicKey) {
+  initMercadoPago(mpPublicKey)
+}
 
 export default function OrderStatus({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
 
   const [order, setOrder] = useState<any>(null)
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card'>('pix')
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card' | 'manual'>('pix')
   
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null)
   const [loadingPix, setLoadingPix] = useState(false)
@@ -42,25 +46,22 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     }
   }
 
-  // --- O SEGREDO ESTÁ AQUI NA CORREÇÃO DO RELÓGIO ---
   useEffect(() => {
     fetchOrder()
     
     let interval: NodeJS.Timeout
     
-    // Só liga o relógio de atualização se estiver na aba do PIX
-    if (paymentMethod === 'pix') {
+    // O relógio atualiza a tela a cada 5s se estiver no PIX ou no Caixa (aguardando o barista)
+    if (paymentMethod === 'pix' || paymentMethod === 'manual') {
       interval = setInterval(() => {
         fetchOrder()
       }, 5000)
     }
 
-    // Limpa o relógio sempre que o cliente trocar de aba ou sair da página
     return () => {
       if (interval) clearInterval(interval)
     }
   }, [token, paymentMethod]) 
-  // ---------------------------------------------------
 
   const handleGeneratePix = async () => {
     if (!order) return
@@ -99,7 +100,7 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     },
   }
 
- const onSubmitCard = async ({ formData }: any) => {
+  const onSubmitCard = async ({ formData }: any) => {
     return new Promise<void>((resolve, reject) => {
       fetch('/api/cartao', {
         method: 'POST',
@@ -112,11 +113,9 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
             alert('Erro ao processar: ' + data.error)
             reject()
           } else if (data.status === 'rejected') {
-            // AGORA O CLIENTE SABE QUE DEU RUIM!
             alert('Cartão recusado pelo emissor. Verifique os dados, o limite e tente novamente.')
             reject()
           } else {
-            // Aprovado ou em processamento
             fetchOrder()
             resolve()
           }
@@ -165,25 +164,35 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
           <p className="text-gray-600 mb-2">Total a pagar</p>
           <p className="text-3xl font-black text-amber-900 mb-6">{formatPrice(order.total_amount)}</p>
 
-          <div className="flex gap-2 w-full mb-6 p-1 bg-gray-100 rounded-xl">
+          {/* Abas com as 3 opções */}
+          <div className="flex gap-1 w-full mb-6 p-1 bg-gray-100 rounded-xl overflow-x-auto text-sm">
             <button 
               onClick={() => setPaymentMethod('pix')}
-              className={`flex-1 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all duration-300 ${
+              className={`flex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 ${
                 paymentMethod === 'pix' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              <QrCode size={18} /> PIX
+              <QrCode size={16} /> PIX
             </button>
             <button 
               onClick={() => setPaymentMethod('card')}
-              className={`flex-1 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all duration-300 ${
+              className={`flex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 ${
                 paymentMethod === 'card' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              <CreditCard size={18} /> Cartão
+              <CreditCard size={16} /> Cartão Online
+            </button>
+            <button 
+              onClick={() => setPaymentMethod('manual')}
+              className={`flex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 ${
+                paymentMethod === 'manual' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Store size={16} /> Caixa
             </button>
           </div>
 
+          {/* ABA: PIX */}
           {paymentMethod === 'pix' && (
             <div className="animate-in fade-in slide-in-from-left-2 duration-300">
               {!pixData ? (
@@ -220,6 +229,7 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
             </div>
           )}
 
+          {/* ABA: CARTÃO ONLINE */}
           {paymentMethod === 'card' && (
             <div className="animate-in fade-in slide-in-from-right-2 duration-300 text-left">
               <Payment
@@ -228,6 +238,25 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
                 onSubmit={onSubmitCard}
                 onError={(e) => console.error(e)}
               />
+            </div>
+          )}
+
+          {/* ABA: PAGAMENTO MANUAL (CAIXA) */}
+          {paymentMethod === 'manual' && (
+            <div className="animate-in fade-in slide-in-from-right-2 duration-300 text-center bg-amber-50 p-6 rounded-xl border border-amber-200">
+              <div className="w-12 h-12 bg-amber-200 text-amber-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Store size={24} />
+              </div>
+              <h3 className="font-bold text-lg text-amber-900 mb-2">Pague direto no balcão</h3>
+              <p className="text-gray-600 text-sm mb-4">
+                Dirija-se à nossa tenda e informe o número do seu pedido para um de nossos baristas:
+              </p>
+              <div className="bg-white p-4 rounded-lg border-2 border-dashed border-amber-900 inline-block mb-4">
+                <span className="text-4xl font-black text-amber-900">#{order.short_id}</span>
+              </div>
+              <p className="text-xs text-amber-700 font-medium animate-pulse">
+                Aguardando confirmação do atendente...
+              </p>
             </div>
           )}
         </div>
