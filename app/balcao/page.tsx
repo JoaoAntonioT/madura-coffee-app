@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock } from 'lucide-react'
-import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados } from './actions'
+import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban } from 'lucide-react'
+import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido } from './actions'
 
 // ==========================================
 // TIPAGENS
@@ -44,7 +44,6 @@ type ProductInfo = {
 // ==========================================
 // FUNÇÕES AUXILIARES
 // ==========================================
-// Formata a data do banco (ISO) para o horário local (Ex: "14:30")
 const formatTime = (dateString: string) => {
   return new Date(dateString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
@@ -61,11 +60,13 @@ export default function Balcao() {
   const [orders, setOrders] = useState<Order[]>([])
   const [productsList, setProductsList] = useState<ProductInfo[]>([])
   
-  // NOVO: Estado para a barra de pesquisa
   const [busca, setBusca] = useState('')
-  
   const [isPending, startTransition] = useTransition()
   const [loadingId, setLoadingId] = useState<string | null>(null)
+
+  // Modais
+  const [checkoutModalOrder, setCheckoutModalOrder] = useState<Order | null>(null)
+  const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null)
 
   // Verifica login salvo
   useEffect(() => {
@@ -97,10 +98,8 @@ export default function Balcao() {
     setOrders([]) 
 
     const fetchOrders = async () => {
-      // 1. ANTES DE BUSCAR: Executa a varredura para expirar pedidos velhos (> 15 min)
       await limparPedidosExpirados()
 
-      // 2. BUSCA: Traz os pedidos ordenados por data crescente (Mais antigos primeiro)
       const { data } = await supabase
         .from('orders')
         .select('*, order_items(*)')
@@ -130,7 +129,9 @@ export default function Balcao() {
     return () => clearInterval(interval)
   }, [user, activeTab])
 
-  // Login & Logout
+  // ==========================================
+  // HANDLERS E AÇÕES
+  // ==========================================
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -152,7 +153,6 @@ export default function Balcao() {
     localStorage.removeItem('balcao_user')
   }
 
-  // Ações
   const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
@@ -163,11 +163,22 @@ export default function Balcao() {
     })
   }
 
-  const handleConfirmarPagamento = (orderId: string) => {
+  const handleConfirmarPagamentoFinal = (orderId: string, tipo: 'dinheiro' | 'maquininha') => {
     setLoadingId(orderId)
     startTransition(async () => {
-      const res = await confirmarPagamento(orderId)
+      const res = await confirmarPagamento(orderId, tipo)
       if (!res.success) alert(`Erro: ${res.error}`)
+      setCheckoutModalOrder(null)
+      setLoadingId(null)
+    })
+  }
+
+  const handleConfirmarCancelamento = (orderId: string) => {
+    setLoadingId(orderId)
+    startTransition(async () => {
+      const res = await cancelarPedido(orderId)
+      if (!res.success) alert(`Erro: ${res.error}`)
+      setCancelModalOrder(null)
       setLoadingId(null)
     })
   }
@@ -191,7 +202,9 @@ export default function Balcao() {
     })
   }
 
-  // Renderização do Login
+  // ==========================================
+  // TELA DE LOGIN
+  // ==========================================
   if (!user) {
     return (
       <div className="min-h-screen bg-amber-900 flex items-center justify-center p-4">
@@ -214,13 +227,16 @@ export default function Balcao() {
   // ==========================================
   const searchLower = busca.toLowerCase()
   const ordersFiltradasBusca = orders.filter(o => 
-    o.short_id.toLowerCase().includes(searchLower) || 
-    o.customer_name.toLowerCase().includes(searchLower)
+    String(o.short_id || '').toLowerCase().includes(searchLower) || 
+    String(o.customer_name || '').toLowerCase().includes(searchLower)
   )
 
   const pedidosACobrar = ordersFiltradasBusca.filter(o => o.status === 'CREATED' || o.status === 'PENDING' || o.status.includes('AWAITING'))
   const pedidosEmPreparo = ordersFiltradasBusca.filter(o => o.status === 'PAID' || o.status === 'IN_PRODUCTION')
 
+  // ==========================================
+  // TELA PRINCIPAL
+  // ==========================================
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-amber-900 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-10">
@@ -253,7 +269,7 @@ export default function Balcao() {
 
       <main className="p-4 flex-1 w-full mx-auto max-w-7xl">
         
-        {/* BARRA DE PESQUISA (Aparece nas abas de operação) */}
+        {/* BARRA DE PESQUISA */}
         {['ATENDIMENTO', 'CAIXA', 'PREPARO'].includes(activeTab) && (
           <div className="mb-6 max-w-2xl mx-auto">
             <div className="relative">
@@ -265,7 +281,7 @@ export default function Balcao() {
                 placeholder="Buscar por número do pedido (#1047) ou nome do cliente..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-amber-900 focus:border-amber-900 sm:text-sm"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-900 focus:border-amber-900 sm:text-sm"
               />
             </div>
           </div>
@@ -274,34 +290,16 @@ export default function Balcao() {
         {/* ABA ATENDIMENTO */}
         {activeTab === 'ATENDIMENTO' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Coluna 1: A Cobrar */}
             <div className="space-y-4">
               <h2 className="font-bold text-gray-700 text-lg flex items-center gap-2">
                 <DollarSign className="text-amber-500" /> Aguardando Pagamento ({pedidosACobrar.length})
               </h2>
               {pedidosACobrar.map(order => (
-                <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-500 flex justify-between items-center relative">
-                  {/* HORÁRIO DO PEDIDO */}
-                  <div className="absolute top-2 right-4 flex items-center gap-1 text-gray-400 text-xs font-bold">
-                    <Clock size={12} /> {formatTime(order.created_at)}
-                  </div>
-                  
-                  <div className="mt-2">
-                    <h3 className="font-black text-xl text-amber-900">#{order.short_id}</h3>
-                    <p className="text-gray-600 font-medium text-sm">{order.customer_name}</p>
-                    <p className="text-md font-black text-gray-800 mt-1">R$ {order.total_amount.toFixed(2)}</p>
-                  </div>
-                  {(user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
-                    <button onClick={() => handleConfirmarPagamento(order.id)} disabled={isPending && loadingId === order.id} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 disabled:opacity-50 flex items-center gap-2 mt-2">
-                      {isPending && loadingId === order.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />} Receber
-                    </button>
-                  )}
-                </div>
+                <OrderCaixaCard key={order.id} order={order} user={user} onOpenCheckout={setCheckoutModalOrder} onOpenCancel={setCancelModalOrder} />
               ))}
               {pedidosACobrar.length === 0 && <p className="text-gray-400 text-sm italic">Nenhuma cobrança pendente.</p>}
             </div>
 
-            {/* Coluna 2: Produção */}
             <div className="space-y-4">
               <h2 className="font-bold text-gray-700 text-lg flex items-center gap-2">
                 <Coffee className="text-amber-900" /> Fila de Preparo ({pedidosEmPreparo.length})
@@ -318,19 +316,7 @@ export default function Balcao() {
         {activeTab === 'CAIXA' && (
           <div className="space-y-4 max-w-3xl mx-auto">
             {pedidosACobrar.map(order => (
-              <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-500 flex justify-between items-center flex-wrap gap-4 relative">
-                <div className="absolute top-2 right-4 flex items-center gap-1 text-gray-400 text-xs font-bold">
-                  <Clock size={12} /> {formatTime(order.created_at)}
-                </div>
-                <div className="mt-2">
-                  <h3 className="font-black text-2xl text-amber-900">#{order.short_id}</h3>
-                  <p className="text-gray-600 font-medium">{order.customer_name}</p>
-                  <p className="text-lg font-black text-gray-800 mt-1">R$ {order.total_amount.toFixed(2)}</p>
-                </div>
-                <button onClick={() => handleConfirmarPagamento(order.id)} disabled={isPending && loadingId === order.id} className="bg-green-600 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-bold hover:bg-green-700 disabled:opacity-50 mt-2">
-                  {isPending && loadingId === order.id ? <Loader2 className="animate-spin" /> : <CheckCircle />} Confirmar Recebimento
-                </button>
-              </div>
+              <OrderCaixaCard key={order.id} order={order} user={user} onOpenCheckout={setCheckoutModalOrder} onOpenCancel={setCancelModalOrder} />
             ))}
           </div>
         )}
@@ -344,8 +330,7 @@ export default function Balcao() {
           </div>
         )}
 
-        {/* ABA PRODUTOS E EQUIPE (MANTIDAS EXATAMENTE COMO NO SEU CÓDIGO ANTERIOR) */}
-        {/* ... */}
+        {/* ABA PRODUTOS E EQUIPE */}
         {activeTab === 'PRODUTOS' && (
           <div className="space-y-6 max-w-4xl mx-auto">
              <div className="flex items-center gap-2 border-b pb-4">
@@ -362,7 +347,6 @@ export default function Balcao() {
 
         {activeTab === 'EQUIPE' && (
           <div className="bg-white p-6 rounded-xl shadow-sm max-w-md mx-auto border">
-            {/* O conteúdo do formulário de equipe mantém-se igual */}
             <div className="flex items-center gap-2 mb-6 border-b pb-4">
               <UserPlus className="text-amber-900" size={24} />
               <h2 className="text-xl font-black text-gray-800">Cadastrar Operador</h2>
@@ -384,10 +368,81 @@ export default function Balcao() {
                   <option value="ADMIN">Administrador (Acesso Total)</option>
                 </select>
               </div>
-              <button type="submit" disabled={isPending} className="w-full bg-amber-900 text-white font-black py-4 rounded-lg flex items-center justify-center gap-2 mt-4 disabled:opacity-70 hover:bg-amber-800 transition-colors">
+              <button type="submit" disabled={isPending} className="w-full bg-amber-900 text-white font-black py-4 rounded-lg flex items-center justify-center gap-2 mt-4 hover:bg-amber-800 transition-colors disabled:opacity-50">
                 {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Cadastrar Membro'}
               </button>
             </form>
+          </div>
+        )}
+
+        {/* ========================================== */}
+        {/* MODAL 1: CHECKOUT EM 2 ETAPAS                */}
+        {/* ========================================== */}
+        {checkoutModalOrder && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative animate-in zoom-in-95">
+              <button onClick={() => setCheckoutModalOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={24} /></button>
+              
+              <h3 className="font-black text-2xl text-amber-900 mb-1">#{checkoutModalOrder.short_id}</h3>
+              <p className="text-gray-600 font-medium mb-4">{checkoutModalOrder.customer_name}</p>
+
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 space-y-2 mb-4">
+                <p className="text-xs font-bold text-gray-500 uppercase">Conferência dos Itens</p>
+                <ul className="space-y-1">
+                  {checkoutModalOrder.order_items?.map((item: any) => (
+                    <li key={item.id} className="text-sm font-bold text-gray-700 flex justify-between">
+                      <span><span className="text-amber-600">{item.quantity}x</span> {item.product_name}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="flex justify-between items-center mb-6 border-b pb-4">
+                <span className="font-bold text-gray-500">TOTAL A COBRAR</span>
+                <span className="text-2xl font-black text-gray-900">R$ {checkoutModalOrder.total_amount.toFixed(2)}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => handleConfirmarPagamentoFinal(checkoutModalOrder.id, 'dinheiro')}
+                  disabled={isPending && loadingId === checkoutModalOrder.id}
+                  className="bg-green-50 text-green-700 border-2 border-green-200 py-4 rounded-xl font-black flex flex-col items-center gap-2 hover:bg-green-100 transition disabled:opacity-50"
+                >
+                  <Banknote size={24} /> Em Dinheiro
+                </button>
+                <button 
+                  onClick={() => handleConfirmarPagamentoFinal(checkoutModalOrder.id, 'maquininha')}
+                  disabled={isPending && loadingId === checkoutModalOrder.id}
+                  className="bg-blue-50 text-blue-700 border-2 border-blue-200 py-4 rounded-xl font-black flex flex-col items-center gap-2 hover:bg-blue-100 transition disabled:opacity-50"
+                >
+                  <CreditCard size={24} /> Na Maquininha
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================== */}
+        {/* MODAL 2: CANCELAR PEDIDO                     */}
+        {/* ========================================== */}
+        {cancelModalOrder && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl text-center animate-in zoom-in-95">
+              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><Ban size={32} /></div>
+              <h3 className="font-black text-xl text-gray-900 mb-2">Cancelar Pedido #{cancelModalOrder.short_id}?</h3>
+              <p className="text-sm text-gray-500 mb-6">O pedido de {cancelModalOrder.customer_name} será arquivado e não aparecerá mais na fila.</p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setCancelModalOrder(null)} className="py-3 font-bold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Voltar</button>
+                <button 
+                  onClick={() => handleConfirmarCancelamento(cancelModalOrder.id)}
+                  disabled={isPending && loadingId === cancelModalOrder.id}
+                  className="py-3 font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 flex justify-center items-center gap-2 disabled:opacity-50"
+                >
+                  {isPending && loadingId === cancelModalOrder.id ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar Exclusão'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -397,23 +452,55 @@ export default function Balcao() {
 }
 
 // ==========================================
-// COMPONENTES AUXILIARES
+// COMPONENTES AUXILIARES (CARDS)
 // ==========================================
-function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPronto }: any) {
+
+function OrderCaixaCard({ order, user, onOpenCheckout, onOpenCancel }: any) {
+  const isPayingOnline = order.payment_method === 'PIX' || order.payment_method === 'CREDIT_CARD' || order.payment_method === 'CARTAO'
+
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-900 flex flex-col sm:flex-row justify-between gap-4 relative">
-      {/* HORÁRIO DO PEDIDO */}
+    <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-500 flex flex-col gap-3 relative">
       <div className="absolute top-2 right-4 flex items-center gap-1 text-gray-400 text-xs font-bold">
         <Clock size={12} /> {formatTime(order.created_at)}
       </div>
+      <div className="mt-2">
+        <h3 className="font-black text-xl text-amber-900">#{order.short_id}</h3>
+        <p className="text-gray-600 font-medium text-sm">{order.customer_name}</p>
+        <p className="text-md font-black text-gray-800 mt-1">R$ {order.total_amount.toFixed(2)}</p>
+      </div>
 
+      {isPayingOnline ? (
+        <div className="bg-amber-50 text-amber-800 p-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 border border-amber-200 mt-2">
+          <Loader2 size={16} className="animate-spin" /> Pagando online ({order.payment_method})
+        </div>
+      ) : (
+        (user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
+          <div className="flex gap-2 mt-2">
+            <button onClick={() => onOpenCheckout(order)} className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2">
+              <DollarSign size={16} /> Receber
+            </button>
+            <button onClick={() => onOpenCancel(order)} className="bg-red-50 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition border border-red-200 flex justify-center items-center" title="Cancelar Pedido">
+              <Ban size={16} />
+            </button>
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
+function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPronto }: any) {
+  return (
+    <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-amber-900 flex flex-col sm:flex-row justify-between gap-4 relative">
+      <div className="absolute top-2 right-4 flex items-center gap-1 text-gray-400 text-xs font-bold">
+        <Clock size={12} /> {formatTime(order.created_at)}
+      </div>
       <div className="flex-1 mt-4 sm:mt-0">
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-black text-xl text-gray-800">#{order.short_id}</h3>
           {order.status === 'IN_PRODUCTION' && <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold">Em Produção</span>}
         </div>
         <p className="text-gray-600 font-medium text-sm mb-3">Cliente: {order.customer_name}</p>
-        
         <ul className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-1">
           {order.order_items?.map((item: any) => (
             <li key={item.id} className="text-sm font-bold text-gray-700 flex gap-2">
@@ -422,7 +509,6 @@ function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPron
           ))}
         </ul>
       </div>
-
       <div className="flex flex-col justify-end gap-2 min-w-[140px] mt-2 sm:mt-0">
         {(user.role === 'ADMIN' || user.role === 'BARISTA') && (
           order.status === 'PAID' ? (
@@ -460,9 +546,7 @@ function RecipeFormCard({ product }: { product: ProductInfo }) {
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="text-sm font-bold text-gray-700">Ingredientes (P/ Estoque)</label>
-            <button type="button" onClick={() => setIngredients([...ingredients, { name: '', quantity: 1, unit: 'g' }])} className="text-amber-700 text-sm font-bold flex items-center gap-1 hover:bg-amber-50 p-1 rounded">
-              <Plus size={16} /> Adicionar
-            </button>
+            <button type="button" onClick={() => setIngredients([...ingredients, { name: '', quantity: 1, unit: 'g' }])} className="text-amber-700 text-sm font-bold flex items-center gap-1 hover:bg-amber-50 p-1 rounded"><Plus size={16} /> Adicionar</button>
           </div>
           <div className="space-y-2">
             {ingredients.map((ing, idx) => (

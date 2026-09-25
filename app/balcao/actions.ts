@@ -23,14 +23,21 @@ export async function cadastrarMembro(formData: FormData) {
 }
 
 // Ação para Aba CAIXA: Confirmar Pagamento Manual
-export async function confirmarPagamento(orderId: string) {
-  const { error } = await supabase
-    .from('orders')
-    .update({ status: 'PAID', payment_method: 'manual' })
-    .eq('id', orderId)
+export async function confirmarPagamento(orderId: string, tipoPagamento: 'dinheiro' | 'maquininha') {
+  try {
+    const { error } = await supabase
+      .from('orders')
+      .update({ 
+        status: 'PAID', 
+        payment_method: tipoPagamento
+      })
+      .eq('id', orderId)
 
-  if (error) return { success: false, error: error.message }
-  return { success: true }
+    if (error) throw error
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
 }
 
 // Ação para Aba PREPARO: Marcar como Pronto
@@ -106,5 +113,19 @@ export async function limparPedidosExpirados() {
     if (error) throw error
   } catch (error) {
     console.error('Erro ao limpar pedidos expirados:', error)
+  }
+}
+
+export async function cancelarPedido(orderId: string) {
+  try {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'CANCELLED' })
+      .eq('id', orderId)
+
+    if (error) throw error
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
   }
 }

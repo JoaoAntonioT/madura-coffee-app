@@ -24,7 +24,7 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   const fetchOrder = async () => {
     const { data: orderData } = await supabase
       .from('orders')
-      .select('*')
+      .select('*, order_items(*)')
       .eq('token', token)
       .single()
     
@@ -62,6 +62,27 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
       if (interval) clearInterval(interval)
     }
   }, [token, paymentMethod]) 
+
+  useEffect(() => {
+    if (order?.status !== 'READY') return
+
+    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate([500, 200, 500, 200, 1000])
+    }
+
+    const stopVibration = () => {
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate(0)
+      }
+    }
+
+    window.addEventListener('click', stopVibration)
+
+    return () => {
+      stopVibration()
+      window.removeEventListener('click', stopVibration)
+    }
+  }, [order?.status])
 
   const handleGeneratePix = async () => {
     if (!order) return
@@ -136,6 +157,45 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-gray-500 animate-pulse">Buscando seu pedido...</p>
+      </div>
+    )
+  }
+
+  if (order.status === 'READY') {
+    const stopVibration = () => {
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate(0)
+      }
+    }
+
+    return (
+      <div className="fixed inset-0 z-50 bg-green-600 text-white flex flex-col items-center justify-center p-6 animate-in zoom-in duration-300">
+        <button
+          type="button"
+          onClick={stopVibration}
+          className="absolute top-4 right-4 text-white/80 hover:text-white text-sm font-bold border border-white/30 rounded-full px-3 py-1"
+        >
+          Fechar
+        </button>
+
+        <div className="mb-6 text-6xl animate-bounce">☕</div>
+        <h1 className="text-4xl md:text-5xl font-black text-center mb-2 leading-tight">
+          SEU CAFÉ <br />ESTÁ PRONTO!
+        </h1>
+        <p className="text-green-100 text-lg mb-8 text-center">Vá até o balcão de retirada e mostre este número:</p>
+
+        <div className="bg-white text-green-700 text-6xl font-black py-4 px-12 rounded-2xl shadow-2xl mb-12">
+          #{order.short_id}
+        </div>
+
+        <p className="font-bold text-center mb-2">Itens do pedido:</p>
+        <ul className="text-green-100 mb-8 max-w-sm w-full space-y-1">
+          {order.order_items?.map((item: any) => (
+            <li key={item.id} className="flex justify-between border-b border-green-500 pb-1">
+              <span>{item.quantity}x {item.product_name}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     )
   }
