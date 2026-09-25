@@ -47,14 +47,15 @@ export async function POST(request: Request) {
       .update({ status: novoStatus })
       .eq('id', attempt.id)
 
-    // 4. A MÁGICA: Se foi aprovado, atualiza o pedido para PAID (Pago)
+    // 4. A MÁGICA: Se foi aprovado, atualiza o pedido para PAID e salva o método
     if (novoStatus === 'APPROVED') {
       await supabase
         .from('orders')
-        .update({ status: 'PAID' })
+        .update({ 
+          status: 'PAID',
+          payment_method: attempt.method // Vai salvar 'PIX' ou 'CREDIT_CARD' automaticamente
+        })
         .eq('id', attempt.order_id)
-        
-      // Lembra da regra de baixar o estoque na hora que paga? Faremos isso aqui depois!
     }
 
     // Responde OK (200) para o Mercado Pago

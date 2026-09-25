@@ -53,11 +53,14 @@ export async function POST(request: Request) {
       status: mpResponse.status?.toUpperCase() // Pode ser 'APPROVED', 'IN_PROCESS', 'REJECTED'
     })
 
-    // 4. Se o cartão for aprovado na hora, já mudamos o status do pedido!
+    // 4. Se o cartão for aprovado na hora, mudamos o status E registramos o método
     if (mpResponse.status === 'approved') {
       await supabase
         .from('orders')
-        .update({ status: 'PAID' })
+        .update({ 
+          status: 'PAID',
+          payment_method: 'CARTAO' // <- MÁGICA DO DASHBOARD AQUI
+        })
         .eq('id', order.id)
     }
 
