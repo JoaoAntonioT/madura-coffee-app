@@ -61,6 +61,10 @@ export default function Balcao() {
   const [productsList, setProductsList] = useState<ProductInfo[]>([])
   const [historico, setHistorico] = useState<Order[]>([])
   
+  const [historicoFilter, setHistoricoFilter] = useState<'ALL' | 'DELIVERED' | 'CANCELLED' | 'EXPIRED'>('ALL')
+  const [detailModalOrder, setDetailModalOrder] = useState<Order | null>(null)
+  const [teamMembers, setTeamMembers] = useState<{id: string, name: string}[]>([])
+
   const [busca, setBusca] = useState('')
   const [isPending, startTransition] = useTransition()
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -101,6 +105,11 @@ export default function Balcao() {
           .limit(100)
           
         if (data) setHistorico(data)
+        
+        if (teamMembers.length === 0) {
+          const { data: tData } = await supabase.from('team').select('id, name')
+          if (tData) setTeamMembers(tData)
+        }
       }
       fetchHistorico()
       return
@@ -419,6 +428,79 @@ export default function Balcao() {
           </div>
         )}
 
+        {/* ABA HISTÓRICO */}
+        {activeTab === 'HISTORICO' && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden">
+            <div className="flex justify-between items-center mb-6 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <History className="text-amber-900" size={24} />
+                <h2 className="text-xl font-black text-gray-800">Histórico de Hoje</h2>
+              </div>
+              <div className="flex gap-2">
+                <select 
+                  className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-sm font-bold text-gray-700 outline-none"
+                  value={historicoFilter}
+                  onChange={(e) => setHistoricoFilter(e.target.value as any)}
+                >
+                  <option value="ALL">Todos</option>
+                  <option value="DELIVERED">Entregues</option>
+                  <option value="CANCELLED">Cancelados</option>
+                  <option value="EXPIRED">Expirados</option>
+                </select>
+                <button 
+                  onClick={handleExportCSV} 
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition flex items-center gap-2"
+                >
+                  <Download size={18} /> Exportar
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 text-sm">
+                    <th className="p-3 font-bold">Pedido</th>
+                    <th className="p-3 font-bold">Cliente</th>
+                    <th className="p-3 font-bold">Horário</th>
+                    <th className="p-3 font-bold">Status</th>
+                    <th className="p-3 font-bold">Pagamento</th>
+                    <th className="p-3 font-bold">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historico.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-gray-500">Nenhum pedido finalizado hoje.</td>
+                    </tr>
+                  ) : (
+                    historico
+                      .filter(order => historicoFilter === 'ALL' || order.status === historicoFilter)
+                      .map(order => (
+                      <tr key={order.id} onClick={() => setDetailModalOrder(order)} className="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer">
+                        <td className="p-3 font-bold text-gray-800">#{order.short_id}</td>
+                        <td className="p-3 text-gray-600 font-medium">{order.customer_name}</td>
+                        <td className="p-3 text-gray-500 text-sm">{new Date(order.created_at).toLocaleTimeString('pt-BR')}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                            order.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.status === 'DELIVERED' ? 'ENTREGUE' : order.status === 'CANCELLED' ? 'CANCELADO' : 'EXPIRADO'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-500 text-sm">{order.payment_method || '-'}</td>
+                        <td className="p-3 font-black text-amber-900">R$ {order.total_amount.toFixed(2)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'EQUIPE' && (
           <div className="bg-white p-6 rounded-xl shadow-sm max-w-md mx-auto border">
             <div className="flex items-center gap-2 mb-6 border-b pb-4">
@@ -515,6 +597,68 @@ export default function Balcao() {
                 >
                   {isPending && loadingId === cancelModalOrder.id ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar Exclusão'}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================== */}
+        {/* MODAL 3: DETALHES DO PEDIDO (HISTÓRICO)      */}
+        {/* ========================================== */}
+        {detailModalOrder && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative animate-in zoom-in-95">
+              <button onClick={() => setDetailModalOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={24} /></button>
+              
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-amber-100 text-amber-900 rounded-full flex items-center justify-center">
+                  <Coffee size={24} />
+                </div>
+                <div>
+                  <h3 className="font-black text-2xl text-gray-900">#{detailModalOrder.short_id}</h3>
+                  <p className="text-gray-500 font-medium">{detailModalOrder.customer_name}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Status Final</p>
+                    <p className="font-bold text-gray-800">{detailModalOrder.status}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Pagamento</p>
+                    <p className="font-bold text-gray-800">{detailModalOrder.payment_method || 'Não Pago'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Total</p>
+                    <p className="font-bold text-amber-900">R$ {detailModalOrder.total_amount.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Responsável (Preparo)</p>
+                    <p className="font-bold text-gray-800">
+                      {teamMembers.find(t => t.id === detailModalOrder.assigned_to)?.name || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <p className="text-xs font-bold text-gray-500 mb-2">Horários</p>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li><span className="font-bold">Criado em:</span> {new Date(detailModalOrder.created_at).toLocaleString('pt-BR')}</li>
+                  </ul>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <p className="text-xs font-bold text-gray-500 mb-2">Itens</p>
+                  <ul className="space-y-1">
+                    {detailModalOrder.order_items?.map((item: any) => (
+                      <li key={item.id} className="text-sm font-bold text-gray-700 flex justify-between">
+                        <span><span className="text-amber-600">{item.quantity}x</span> {item.product_name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
