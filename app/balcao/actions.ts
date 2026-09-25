@@ -72,11 +72,14 @@ export async function assumirPedido(orderId: string, teamMemberId: string) {
 
 // Adicione no final do seu app/balcao/actions.ts
 
-export async function atualizarReceitaProduto(productId: string, recipeText: string) {
+export async function atualizarReceitaProduto(productId: string, instructions: string, ingredients: any[]) {
   try {
     const { error } = await supabase
       .from('products')
-      .update({ recipe_instructions: recipeText })
+      .update({ 
+        recipe_instructions: instructions,
+        recipe_ingredients: ingredients // Salva a lista estruturada
+      })
       .eq('id', productId)
 
     if (error) throw error
