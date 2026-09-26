@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 
 // Usamos a SERVICE_ROLE_KEY para ter poder de atualizar o pedido direto
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim(),
+  (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
 )
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN! })

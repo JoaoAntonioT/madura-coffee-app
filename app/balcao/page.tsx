@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download, RotateCcw, AlertTriangle } from 'lucide-react'
-import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido } from './actions'
+import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download, RotateCcw, AlertTriangle, ClipboardList } from 'lucide-react'
+import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido, salvarInsumoEstoque, excluirInsumoEstoque } from './actions'
 
 // ==========================================
 // TIPAGENS
@@ -56,12 +56,13 @@ export default function Balcao() {
   const [pinInput, setPinInput] = useState('')
   const [error, setError] = useState('')
   
-  const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE' | 'PRODUTOS' | 'HISTORICO'>('ATENDIMENTO')
+  const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE' | 'PRODUTOS' | 'HISTORICO' | 'ESTOQUE'>('ATENDIMENTO')
   const [orders, setOrders] = useState<Order[]>([])
   const [productsList, setProductsList] = useState<ProductInfo[]>([])
+  const [estoque, setEstoque] = useState<{id: string, name: string, quantity: number, unit: string}[]>([])
   const [historico, setHistorico] = useState<Order[]>([])
   
-  const [historicoFilter, setHistoricoFilter] = useState<'ALL' | 'DELIVERED' | 'CANCELLED' | 'EXPIRED'>('ALL')
+  const [historicoFilter, setHistoricoFilter] = useState<'ALL' | 'DELIVERED' | 'CANCELLED' | 'EXPIRED' | 'REFUNDED'>('ALL')
   const [detailModalOrder, setDetailModalOrder] = useState<Order | null>(null)
   const [refundStep, setRefundStep] = useState<0 | 1 | 2>(0) // 0: Nenhum, 1: Escolhendo tipo, 2: Digitando valor
   const [refundAmount, setRefundAmount] = useState('')
@@ -74,6 +75,7 @@ export default function Balcao() {
   // Modais
   const [checkoutModalOrder, setCheckoutModalOrder] = useState<Order | null>(null)
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null)
+  const [insumoModal, setInsumoModal] = useState<{id?: string, name: string, quantity: number, unit: string} | null>(null)
 
   // Verifica login salvo
   useEffect(() => {
@@ -101,7 +103,7 @@ export default function Balcao() {
         const { data } = await supabase
           .from('orders')
           .select('*, order_items(*)')
-          .in('status', ['DELIVERED', 'CANCELLED', 'EXPIRED'])
+          .in('status', ['DELIVERED', 'CANCELLED', 'EXPIRED', 'REFUNDED'])
           .gte('created_at', startOfDay.toISOString())
           .order('created_at', { ascending: false })
           .limit(100)
@@ -117,10 +119,24 @@ export default function Balcao() {
       return
     }
 
+    if (activeTab === 'ESTOQUE') {
+      const fetchEstoque = async () => {
+        const { data } = await supabase.from('inventory').select('*').order('name')
+        if (data) setEstoque(data)
+      }
+      fetchEstoque()
+      return
+    }
+
     if (activeTab === 'PRODUTOS') {
       const fetchProducts = async () => {
         const { data } = await supabase.from('products').select('id, name, recipe_instructions, recipe_ingredients').order('name')
         if (data) setProductsList(data)
+
+        if (estoque.length === 0) {
+          const { data: inv } = await supabase.from('inventory').select('*').order('name')
+          if (inv) setEstoque(inv)
+        }
       }
       fetchProducts()
       return
@@ -186,11 +202,17 @@ export default function Balcao() {
 
   const handleCadastro = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const formData = new FormData(form)
     startTransition(async () => {
       const res = await cadastrarMembro(formData)
-      if (res.success) { alert('Membro cadastrado!'); e.currentTarget.reset() }
-      else alert(`Erro: ${res.error}`)
+      if (res.success) { 
+        alert('Membro cadastrado!')
+        form.reset() 
+      }
+      else {
+        alert(`Erro: ${res.error}`)
+      }
     })
   }
 
@@ -271,6 +293,34 @@ export default function Balcao() {
         setRefundStep(0)
       }
       setLoadingId(null)
+    })
+  }
+
+  const handleSalvarInsumo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!insumoModal) return
+    startTransition(async () => {
+      const res = await salvarInsumoEstoque(insumoModal.id || null, insumoModal.name, insumoModal.quantity, insumoModal.unit)
+      if (!res.success) alert(`Erro: ${res.error}`)
+      else {
+        setInsumoModal(null)
+        // Refresh local
+        const { data } = await supabase.from('inventory').select('*').order('name')
+        if (data) setEstoque(data)
+      }
+    })
+  }
+
+  const handleExcluirInsumo = async (id: string) => {
+    if (!confirm('Deseja realmente remover este insumo do estoque?')) return
+    startTransition(async () => {
+      const res = await excluirInsumoEstoque(id)
+      if (!res.success) alert(`Erro: ${res.error}`)
+      else {
+        setInsumoModal(null)
+        // Refresh local
+        setEstoque(estoque.filter(i => i.id !== id))
+      }
     })
   }
 
@@ -370,6 +420,7 @@ export default function Balcao() {
             <button onClick={() => setActiveTab('PRODUTOS')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'PRODUTOS' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><Package size={20} /> Produtos & Receitas</button>
             <button onClick={() => setActiveTab('EQUIPE')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'EQUIPE' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><Users size={20} /> Equipe</button>
             <button onClick={() => setActiveTab('HISTORICO')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'HISTORICO' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><History size={20} /> Histórico</button>
+            <button onClick={() => setActiveTab('ESTOQUE')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'ESTOQUE' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><ClipboardList size={20} /> Estoque</button>
           </>
         )}
       </div>
@@ -456,7 +507,7 @@ export default function Balcao() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {productsList.map(product => (
-                <RecipeFormCard key={product.id} product={product} />
+                <RecipeFormCard key={product.id} product={product} estoque={estoque} />
               ))}
             </div>
           </div>
@@ -480,6 +531,7 @@ export default function Balcao() {
                   <option value="DELIVERED">Entregues</option>
                   <option value="CANCELLED">Cancelados</option>
                   <option value="EXPIRED">Expirados</option>
+                  <option value="REFUNDED">Reembolsados</option>
                 </select>
                 <button 
                   onClick={handleExportCSV} 
@@ -519,13 +571,72 @@ export default function Balcao() {
                           <span className={`px-2 py-1 rounded text-xs font-bold ${
                             order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
                             order.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                            order.status === 'REFUNDED' ? 'bg-orange-100 text-orange-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {order.status === 'DELIVERED' ? 'ENTREGUE' : order.status === 'CANCELLED' ? 'CANCELADO' : 'EXPIRADO'}
+                            {order.status === 'DELIVERED' ? 'ENTREGUE' : order.status === 'CANCELLED' ? 'CANCELADO' : order.status === 'REFUNDED' ? 'REEMBOLSADO' : 'EXPIRADO'}
                           </span>
                         </td>
                         <td className="p-3 text-gray-500 text-sm">{order.payment_method || '-'}</td>
                         <td className="p-3 font-black text-amber-900">R$ {order.total_amount.toFixed(2)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ABA ESTOQUE */}
+        {activeTab === 'ESTOQUE' && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden">
+            <div className="flex justify-between items-center mb-6 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="text-amber-900" size={24} />
+                <h2 className="text-xl font-black text-gray-800">Estoque de Insumos</h2>
+              </div>
+              <button 
+                onClick={() => setInsumoModal({ name: '', quantity: 0, unit: 'g' })}
+                className="bg-amber-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-amber-800 transition flex items-center gap-2"
+              >
+                <Plus size={18} /> Novo Insumo
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 text-sm">
+                    <th className="p-3 font-bold">Insumo</th>
+                    <th className="p-3 font-bold text-center">Quantidade Atual</th>
+                    <th className="p-3 font-bold">Unidade</th>
+                    <th className="p-3 font-bold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {estoque.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-6 text-center text-gray-500">
+                        Nenhum item carregado.<br/>
+                        Verifique se a tabela <b>inventory</b> já foi criada no Supabase e se contém registros!
+                      </td>
+                    </tr>
+                  ) : (
+                    estoque.map(item => (
+                      <tr key={item.id} onClick={() => setInsumoModal(item)} className="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer">
+                        <td className="p-3 font-bold text-gray-800">{item.name}</td>
+                        <td className="p-3 font-black text-xl text-amber-900 text-center">{item.quantity}</td>
+                        <td className="p-3 text-gray-500">{item.unit}</td>
+                        <td className="p-3">
+                          {item.quantity <= 0 ? (
+                            <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-bold">ESGOTADO</span>
+                          ) : item.quantity < 20 ? (
+                            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-bold">BAIXO</span>
+                          ) : (
+                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold">NORMAL</span>
+                          )}
+                        </td>
                       </tr>
                     ))
                   )}
@@ -759,6 +870,84 @@ export default function Balcao() {
           </div>
         )}
 
+        {/* ========================================== */}
+        {/* MODAL 4: INSUMO (ESTOQUE)                    */}
+        {/* ========================================== */}
+        {insumoModal && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative animate-in zoom-in-95">
+              <button onClick={() => setInsumoModal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={24} /></button>
+              
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-amber-100 text-amber-900 rounded-full flex items-center justify-center">
+                  <ClipboardList size={24} />
+                </div>
+                <div>
+                  <h3 className="font-black text-xl text-gray-900">{insumoModal.id ? 'Editar Insumo' : 'Novo Insumo'}</h3>
+                </div>
+              </div>
+
+              <form onSubmit={handleSalvarInsumo} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Nome Exato (igual à receita)</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={insumoModal.name}
+                    onChange={(e) => setInsumoModal({...insumoModal, name: e.target.value})}
+                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 outline-none" 
+                    placeholder="Ex: Café em grão"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Quantidade</label>
+                    <input 
+                      type="number" 
+                      required 
+                      step="0.01"
+                      value={insumoModal.quantity}
+                      onChange={(e) => setInsumoModal({...insumoModal, quantity: parseFloat(e.target.value) || 0})}
+                      className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 outline-none" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Unidade</label>
+                    <select 
+                      value={insumoModal.unit}
+                      onChange={(e) => setInsumoModal({...insumoModal, unit: e.target.value})}
+                      className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 outline-none bg-white"
+                    >
+                      <option value="g">g (gramas)</option>
+                      <option value="ml">ml (mililitros)</option>
+                      <option value="un">un (unidades)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  {insumoModal.id && (
+                    <button 
+                      type="button"
+                      onClick={() => handleExcluirInsumo(insumoModal.id!)}
+                      className="p-3 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 font-bold"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  )}
+                  <button 
+                    type="submit" 
+                    disabled={isPending} 
+                    className="flex-1 bg-amber-900 text-white font-black py-3 rounded-lg hover:bg-amber-800 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isPending ? <Loader2 size={18} className="animate-spin" /> : 'Salvar Insumo'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   )
@@ -857,7 +1046,7 @@ function OrderRetiradaCard({ order, isPending, loadingId, onEntregar }: any) {
   )
 }
 
-function RecipeFormCard({ product }: { product: ProductInfo }) {
+function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: any[] }) {
   const [ingredients, setIngredients] = useState<Ingredient[]>(product.recipe_ingredients || [])
   const [instructions, setInstructions] = useState(product.recipe_instructions || '')
   const [loading, setLoading] = useState(false)
@@ -882,13 +1071,27 @@ function RecipeFormCard({ product }: { product: ProductInfo }) {
           <div className="space-y-2">
             {ingredients.map((ing, idx) => (
               <div key={idx} className="flex gap-2 items-center">
-                <input type="text" placeholder="Ex: Café em grão" value={ing.name} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].name = e.target.value; setIngredients(newIng) }} className="flex-1 border rounded p-2 text-sm outline-none focus:border-amber-900" />
-                <input type="number" placeholder="Qtd" value={ing.quantity} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].quantity = Number(e.target.value); setIngredients(newIng) }} className="w-16 border rounded p-2 text-sm outline-none focus:border-amber-900" />
-                <select value={ing.unit} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].unit = e.target.value; setIngredients(newIng) }} className="w-20 border rounded p-2 text-sm bg-white">
-                  <option value="g">g</option>
-                  <option value="ml">ml</option>
-                  <option value="un">un</option>
+                <select 
+                  value={ing.name} 
+                  onChange={(e) => { 
+                    const newIng = [...ingredients]; 
+                    newIng[idx].name = e.target.value; 
+                    const selItem = estoque.find(i => i.name === e.target.value);
+                    if (selItem) newIng[idx].unit = selItem.unit; // Auto-preenche a unidade
+                    setIngredients(newIng) 
+                  }} 
+                  className="flex-1 border rounded p-2 text-sm outline-none focus:border-amber-900 bg-white"
+                >
+                  <option value="" disabled>Selecione um insumo...</option>
+                  {estoque.map(item => (
+                    <option key={item.id} value={item.name}>{item.name}</option>
+                  ))}
+                  {ing.name && !estoque.some(i => i.name === ing.name) && (
+                    <option value={ing.name}>{ing.name} (Fora do Estoque)</option>
+                  )}
                 </select>
+                <input type="number" placeholder="Qtd" value={ing.quantity} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].quantity = Number(e.target.value); setIngredients(newIng) }} className="w-16 border rounded p-2 text-sm outline-none focus:border-amber-900" />
+                <span className="w-10 text-center text-sm font-bold text-gray-500 pt-2">{ing.unit}</span>
                 <button type="button" onClick={() => setIngredients(ingredients.filter((_, i) => i !== idx))} className="text-red-500 p-2 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
               </div>
             ))}

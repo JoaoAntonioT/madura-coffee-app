@@ -1,6 +1,6 @@
 'use server'
 
-import { supabase } from '../../lib/supabase'
+import { supabaseAdmin as supabase } from '../../lib/supabaseAdmin'
 import { revalidatePath } from 'next/cache'
 
 // Ação para Aba EQUIPE: Cadastrar novo membro
@@ -40,6 +40,42 @@ export async function confirmarPagamento(orderId: string, tipoPagamento: 'dinhei
   }
 }
 
+export async function processarBaixaEstoque(orderId: string) {
+  try {
+    // 1. Busca os itens do pedido
+    const { data: items } = await supabase
+      .from('order_items')
+      .select('quantity, product_id')
+      .eq('order_id', orderId)
+
+    if (!items) return
+
+    // 2. Para cada item, busca a receita e calcula o que precisa dar baixa
+    for (const item of items) {
+      const { data: product } = await supabase
+        .from('products')
+        .select('recipe_ingredients')
+        .eq('id', item.product_id)
+        .single()
+
+      if (product && product.recipe_ingredients) {
+        for (const ingredient of product.recipe_ingredients) {
+          const totalToSubtract = ingredient.quantity * item.quantity
+          
+          // Chama uma function no banco (RPC) para fazer a subtração atômica.
+          // O usuário precisa criar a table 'inventory' e a function 'decrement_inventory'
+          await supabase.rpc('decrement_inventory', {
+            ing_name: ingredient.name,
+            amount: totalToSubtract
+          })
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Erro na baixa de estoque:', error)
+  }
+}
+
 // Ação para Aba PREPARO: Marcar como Pronto
 export async function marcarPronto(orderId: string) {
   const { error } = await supabase
@@ -48,7 +84,41 @@ export async function marcarPronto(orderId: string) {
     .eq('id', orderId)
 
   if (error) return { success: false, error: error.message }
+  
+  // Roda a baixa de estoque em background (sem travar a interface)
+  processarBaixaEstoque(orderId)
+
   return { success: true }
+}
+
+export async function salvarInsumoEstoque(id: string | null, name: string, quantity: number, unit: string) {
+  try {
+    if (id) {
+      const { error } = await supabase.from('inventory').update({ name, quantity, unit }).eq('id', id)
+      if (error) throw error
+    } else {
+      const { error } = await supabase.from('inventory').insert([{ name, quantity, unit }])
+      if (error) {
+        if (error.code === '23505') throw new Error('Já existe um insumo com este nome.')
+        throw error
+      }
+    }
+    revalidatePath('/balcao')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+export async function excluirInsumoEstoque(id: string) {
+  try {
+    const { error } = await supabase.from('inventory').delete().eq('id', id)
+    if (error) throw error
+    revalidatePath('/balcao')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
 }
 
 export async function assumirPedido(orderId: string, teamMemberId: string) {
