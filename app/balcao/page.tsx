@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download, RotateCcw, AlertTriangle, ClipboardList } from 'lucide-react'
-import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido, salvarInsumoEstoque, excluirInsumoEstoque } from './actions'
+import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido, salvarInsumoEstoque, excluirInsumoEstoque, adicionarCategoria, editarCategoria, moverCategoria, excluirCategoria, salvarProduto, toggleProdutoDisponivel, excluirProduto } from './actions'
 
 // ==========================================
 // TIPAGENS
@@ -59,7 +59,13 @@ export default function Balcao() {
   const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE' | 'PRODUTOS' | 'HISTORICO' | 'ESTOQUE'>('ATENDIMENTO')
   const [orders, setOrders] = useState<Order[]>([])
   const [productsList, setProductsList] = useState<ProductInfo[]>([])
+  const [categories, setCategories] = useState<any[]>([])
   const [estoque, setEstoque] = useState<{id: string, name: string, quantity: number, unit: string}[]>([])
+  
+  const [produtoSubTab, setProdutoSubTab] = useState<'CARDAPIO' | 'FICHAS'>('CARDAPIO')
+  const [categoryModal, setCategoryModal] = useState<{id?: string, name: string, sort_order: number} | null>(null)
+  const [produtoModal, setProdutoModal] = useState<{id?: string, category_id: string, name: string, description: string, price: number} | null>(null)
+  
   const [historico, setHistorico] = useState<Order[]>([])
   
   const [historicoFilter, setHistoricoFilter] = useState<'ALL' | 'DELIVERED' | 'CANCELLED' | 'EXPIRED' | 'REFUNDED'>('ALL')
@@ -129,16 +135,19 @@ export default function Balcao() {
     }
 
     if (activeTab === 'PRODUTOS') {
-      const fetchProducts = async () => {
-        const { data } = await supabase.from('products').select('id, name, recipe_instructions, recipe_ingredients').order('name')
-        if (data) setProductsList(data)
+      const fetchData = async () => {
+        const { data: catData } = await supabase.from('categories').select('*').order('sort_order')
+        if (catData) setCategories(catData)
+
+        const { data: prodData } = await supabase.from('products').select('*').order('name')
+        if (prodData) setProductsList(prodData)
 
         if (estoque.length === 0) {
           const { data: inv } = await supabase.from('inventory').select('*').order('name')
           if (inv) setEstoque(inv)
         }
       }
-      fetchProducts()
+      fetchData()
       return
     }
 
@@ -213,6 +222,60 @@ export default function Balcao() {
       else {
         alert(`Erro: ${res.error}`)
       }
+    })
+  }
+
+  // HANDLERS CARDAPIO
+  const handleSalvarCategoria = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!categoryModal) return
+    startTransition(async () => {
+      const res = categoryModal.id 
+        ? await editarCategoria(categoryModal.id, categoryModal.name)
+        : await adicionarCategoria(categoryModal.name, categoryModal.sort_order)
+      
+      if (res.success) setCategoryModal(null)
+      else alert(`Erro: ${res.error}`)
+    })
+  }
+
+  const handleExcluirCategoria = (id: string) => {
+    if (!confirm('Deseja excluir esta categoria? Os produtos precisam ser realocados antes.')) return
+    startTransition(async () => {
+      const res = await excluirCategoria(id)
+      if (res.success) setCategoryModal(null)
+      else alert(`Erro: ${res.error}`)
+    })
+  }
+
+  const handleMoverCategoria = (id: string, currentOrder: number, direction: 'up' | 'down') => {
+    startTransition(async () => {
+      await moverCategoria(id, currentOrder, direction)
+    })
+  }
+
+  const handleSalvarProduto = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!produtoModal) return
+    startTransition(async () => {
+      const res = await salvarProduto(produtoModal.id || null, produtoModal.category_id, produtoModal.name, produtoModal.description, produtoModal.price)
+      if (res.success) setProdutoModal(null)
+      else alert(`Erro: ${res.error}`)
+    })
+  }
+
+  const handleToggleProduto = (id: string, is_available: boolean) => {
+    startTransition(async () => {
+      await toggleProdutoDisponivel(id, is_available)
+    })
+  }
+
+  const handleExcluirProduto = (id: string) => {
+    if (!confirm('Excluir este produto permanentemente?')) return
+    startTransition(async () => {
+      const res = await excluirProduto(id)
+      if (res.success) setProdutoModal(null)
+      else alert(`Erro: ${res.error}`)
     })
   }
 
@@ -498,18 +561,100 @@ export default function Balcao() {
           </div>
         )}
 
-        {/* ABA PRODUTOS E EQUIPE */}
+        {/* ABA PRODUTOS E RECEITAS */}
         {activeTab === 'PRODUTOS' && (
-          <div className="space-y-6 max-w-4xl mx-auto">
-             <div className="flex items-center gap-2 border-b pb-4">
-              <Package className="text-amber-900" size={24} />
-              <h2 className="text-xl font-black text-gray-800">Cardápio & Controle de Insumos</h2>
+          <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div className="flex items-center gap-2">
+                <Package className="text-amber-900" size={24} />
+                <h2 className="text-xl font-black text-gray-800">Cardápio & Fichas Técnicas</h2>
+              </div>
+              <div className="flex bg-gray-100 p-1 rounded-lg">
+                <button 
+                  onClick={() => setProdutoSubTab('CARDAPIO')} 
+                  className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${produtoSubTab === 'CARDAPIO' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Gestão de Cardápio
+                </button>
+                <button 
+                  onClick={() => setProdutoSubTab('FICHAS')} 
+                  className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${produtoSubTab === 'FICHAS' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Fichas Técnicas (Estoque)
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {productsList.map(product => (
-                <RecipeFormCard key={product.id} product={product} estoque={estoque} />
-              ))}
-            </div>
+
+            {produtoSubTab === 'FICHAS' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {productsList.map(product => (
+                  <RecipeFormCard key={product.id} product={product} estoque={estoque} />
+                ))}
+              </div>
+            )}
+
+            {produtoSubTab === 'CARDAPIO' && (
+              <div className="space-y-6">
+                <div className="flex justify-end">
+                  <button onClick={() => setCategoryModal({name: '', sort_order: categories.length + 1})} className="bg-amber-900 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-amber-800 transition">
+                    <Plus size={18} /> Nova Categoria
+                  </button>
+                </div>
+                
+                <div className="space-y-8">
+                  {categories.map((cat, index) => {
+                    const catProducts = productsList.filter(p => p.category_id === cat.id)
+                    return (
+                      <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-black text-lg text-gray-800">{cat.name}</h3>
+                            <button onClick={() => setCategoryModal(cat)} className="text-gray-400 hover:text-amber-900 text-sm font-bold">Editar</button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button disabled={index === 0} onClick={() => handleMoverCategoria(cat.id, cat.sort_order, 'up')} className="p-1 text-gray-400 hover:text-gray-800 disabled:opacity-30">⬆️</button>
+                            <button disabled={index === categories.length - 1} onClick={() => handleMoverCategoria(cat.id, cat.sort_order, 'down')} className="p-1 text-gray-400 hover:text-gray-800 disabled:opacity-30">⬇️</button>
+                            <button onClick={() => handleExcluirCategoria(cat.id)} className="p-1 text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <div className="space-y-3">
+                            {catProducts.map(prod => (
+                              <div key={prod.id} className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${!prod.is_available ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'}`}>
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="font-bold text-gray-900">{prod.name}</p>
+                                      <p className="text-sm text-gray-500 mt-1 max-w-lg truncate">{prod.description}</p>
+                                    </div>
+                                    <div className="text-right ml-4">
+                                      <p className="font-black text-amber-900">R$ {prod.price?.toFixed(2)}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="ml-6 flex items-center gap-4 border-l pl-4">
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" checked={prod.is_available} onChange={(e) => handleToggleProduto(prod.id, e.target.checked)} className="w-4 h-4 accent-amber-600 cursor-pointer" />
+                                    <span className={`text-sm font-bold ${prod.is_available ? 'text-green-600' : 'text-red-500'}`}>
+                                      {prod.is_available ? 'Ativo' : 'Esgotado'}
+                                    </span>
+                                  </label>
+                                  <button onClick={() => setProdutoModal(prod)} className="text-gray-400 hover:text-amber-900 font-bold text-sm bg-gray-100 px-3 py-1 rounded">Editar</button>
+                                </div>
+                              </div>
+                            ))}
+                            {catProducts.length === 0 && <p className="text-sm text-gray-400 italic">Nenhum produto nesta categoria.</p>}
+                          </div>
+                          <button onClick={() => setProdutoModal({name: '', description: '', price: 0, category_id: cat.id})} className="mt-4 text-amber-900 font-bold text-sm flex items-center gap-1 hover:underline">
+                            <Plus size={16} /> Adicionar Produto em {cat.name}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -866,6 +1011,65 @@ export default function Balcao() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================== */}
+        {/* MODAL CATEGORIA                              */}
+        {/* ========================================== */}
+        {categoryModal && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative animate-in zoom-in-95">
+              <button onClick={() => setCategoryModal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={24} /></button>
+              <h3 className="font-black text-xl text-gray-900 mb-4">{categoryModal.id ? 'Editar Categoria' : 'Nova Categoria'}</h3>
+              <form onSubmit={handleSalvarCategoria} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Nome da Categoria</label>
+                  <input type="text" required value={categoryModal.name} onChange={(e) => setCategoryModal({...categoryModal, name: e.target.value})} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 outline-none" placeholder="Ex: Bebidas Quentes" />
+                </div>
+                <button type="submit" disabled={isPending} className="w-full bg-amber-900 text-white font-black py-3 rounded-lg hover:bg-amber-800 transition">Salvar Categoria</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================== */}
+        {/* MODAL PRODUTO                                */}
+        {/* ========================================== */}
+        {produtoModal && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow-xl relative animate-in zoom-in-95 my-auto">
+              <button onClick={() => setProdutoModal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={24} /></button>
+              <h3 className="font-black text-xl text-gray-900 mb-4">{produtoModal.id ? 'Editar Produto' : 'Novo Produto'}</h3>
+              <form onSubmit={handleSalvarProduto} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Nome do Produto</label>
+                  <input type="text" required value={produtoModal.name} onChange={(e) => setProdutoModal({...produtoModal, name: e.target.value})} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 outline-none" placeholder="Ex: Espresso Duplo" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Descrição</label>
+                  <textarea value={produtoModal.description} onChange={(e) => setProdutoModal({...produtoModal, description: e.target.value})} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 outline-none resize-none" rows={3} placeholder="Breve descrição para o cliente..." />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Preço (R$)</label>
+                    <input type="number" step="0.01" required value={produtoModal.price} onChange={(e) => setProdutoModal({...produtoModal, price: parseFloat(e.target.value) || 0})} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Categoria</label>
+                    <select value={produtoModal.category_id} onChange={(e) => setProdutoModal({...produtoModal, category_id: e.target.value})} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-amber-900 outline-none bg-white">
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="pt-4 flex gap-3">
+                  {produtoModal.id && (
+                    <button type="button" onClick={() => handleExcluirProduto(produtoModal.id!)} className="p-3 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 font-bold"><Trash2 size={20} /></button>
+                  )}
+                  <button type="submit" disabled={isPending} className="flex-1 bg-amber-900 text-white font-black py-3 rounded-lg hover:bg-amber-800 transition">Salvar Produto</button>
+                </div>
+              </form>
             </div>
           </div>
         )}

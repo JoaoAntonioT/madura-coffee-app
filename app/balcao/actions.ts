@@ -267,3 +267,66 @@ export async function reativarPedido(orderId: string) {
     return { success: false, error: error.message }
   }
 }
+
+// ==========================================
+// CATEGORIAS & PRODUTOS (CARDÁPIO)
+// ==========================================
+
+export async function adicionarCategoria(name: string, sortOrder: number) {
+  const { error } = await supabase.from('categories').insert([{ name, sort_order: sortOrder }])
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/balcao')
+  return { success: true }
+}
+
+export async function editarCategoria(id: string, name: string) {
+  const { error } = await supabase.from('categories').update({ name }).eq('id', id)
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/balcao')
+  return { success: true }
+}
+
+export async function moverCategoria(id: string, currentOrder: number, direction: 'up' | 'down') {
+  const newOrder = direction === 'up' ? currentOrder - 1 : currentOrder + 1;
+  const { data: swapCat } = await supabase.from('categories').select('*').eq('sort_order', newOrder).single();
+  
+  if (swapCat) {
+    await supabase.from('categories').update({ sort_order: currentOrder }).eq('id', swapCat.id);
+  }
+  await supabase.from('categories').update({ sort_order: newOrder }).eq('id', id);
+  revalidatePath('/balcao')
+  return { success: true }
+}
+
+export async function excluirCategoria(id: string) {
+  const { error } = await supabase.from('categories').delete().eq('id', id)
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/balcao')
+  return { success: true }
+}
+
+export async function salvarProduto(id: string | null, categoryId: string, name: string, description: string, price: number) {
+  if (id) {
+    const { error } = await supabase.from('products').update({ category_id: categoryId, name, description, price }).eq('id', id)
+    if (error) return { success: false, error: error.message }
+  } else {
+    const { error } = await supabase.from('products').insert([{ category_id: categoryId, name, description, price, is_available: true }])
+    if (error) return { success: false, error: error.message }
+  }
+  revalidatePath('/balcao')
+  return { success: true }
+}
+
+export async function toggleProdutoDisponivel(id: string, is_available: boolean) {
+  const { error } = await supabase.from('products').update({ is_available }).eq('id', id)
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/balcao')
+  return { success: true }
+}
+
+export async function excluirProduto(id: string) {
+  const { error } = await supabase.from('products').delete().eq('id', id)
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/balcao')
+  return { success: true }
+}
