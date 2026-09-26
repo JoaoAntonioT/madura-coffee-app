@@ -278,29 +278,35 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
           {/* Abas com as 3 opções */}
           <div className="flex gap-1 w-full mb-6 p-1 bg-gray-100 rounded-xl overflow-x-auto text-sm">
             {paymentSettings.pix && (
-            <button 
-              onClick={() => setPaymentMethod('pix')}
-              className={lex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 }
-            >
-              <QrCode size={16} /> PIX
-            </button>
-)}
+              <button 
+                onClick={() => setPaymentMethod('pix')}
+                className={`flex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 ${
+                  paymentMethod === 'pix' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <QrCode size={16} /> PIX
+              </button>
+            )}
             {paymentSettings.credit_card && (
-            <button 
-              onClick={() => setPaymentMethod('card')}
-              className={lex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 }
-            >
-              <CreditCard size={16} /> Cartão Online
-            </button>
-)}
+              <button 
+                onClick={() => setPaymentMethod('card')}
+                className={`flex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 ${
+                  paymentMethod === 'card' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <CreditCard size={16} /> Cartão Online
+              </button>
+            )}
             {paymentSettings.counter && (
-            <button 
-              onClick={() => setPaymentMethod('manual')}
-              className={lex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 }
-            >
-              <Store size={16} /> Balcão
-            </button>
-)}
+              <button 
+                onClick={() => setPaymentMethod('manual')}
+                className={`flex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 ${
+                  paymentMethod === 'manual' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Store size={16} /> Balcão
+              </button>
+            )}
           </div>
 
           {/* ABA: PIX */}

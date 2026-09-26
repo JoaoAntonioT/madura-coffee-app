@@ -88,7 +88,7 @@ export default function Menu() {
       )}
 
       <header className="bg-[#3E2723] p-4 sticky top-0 z-10 shadow-md flex justify-center items-center">
-        <h1 className="text-2xl font-black tracking-wide text-white">MADURA COFFEE</h1>
+        <h1 className="text-2xl font-black trac king-wide text-white">MADURA COFFEE</h1>
       </header>
 
       <div className="max-w-md mx-auto p-4 space-y-8">
