@@ -72,8 +72,8 @@ export default function Checkout() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-4">
-        <h2 className="text-xl font-bold text-dark-brown mb-4">Seu carrinho está vazio</h2>
-        <Link href="/" className="text-dark-brown font-bold bg-amber-100 px-6 py-3 rounded-xl">
+        <h2 className="text-xl font-bold text-[#3E2723] mb-4">Seu carrinho está vazio</h2>
+        <Link href="/" className="text-[#3E2723] font-bold bg-amber-100 px-6 py-3 rounded-xl">
           Voltar ao Cardápio
         </Link>
       </div>
@@ -94,7 +94,7 @@ export default function Checkout() {
         <section className="bg-white p-4 rounded-xl shadow-sm border border-custom-border/10 space-y-4">
           {items.map(item => (
             <div key={item.id} className="flex flex-col gap-2 border-b border-custom-border/20 border-gray-50 pb-4 last:border-0 last:pb-0">
-              <div className="flex justify-between font-bold text-dark-brown">
+              <div className="flex justify-between font-bold text-[#3E2723]">
                 <span>{item.product.name}</span>
                 <span className="text-amber-700">{formatPrice(item.product.price * item.quantity)}</span>
               </div>
@@ -124,7 +124,7 @@ export default function Checkout() {
 
         {/* Dados do Cliente */}
         <section className="bg-white p-4 rounded-xl shadow-sm border border-custom-border/10 space-y-4">
-          <h2 className="font-bold text-dark-brown">Seus dados para entrega</h2>
+          <h2 className="font-bold text-[#3E2723]">Seus dados para entrega</h2>
           
           <div>
             <label className="block text-sm font-semibold text-medium-brown mb-1">Nome completo (Obrigatório)</label>
@@ -134,7 +134,7 @@ export default function Checkout() {
               placeholder="Como devemos te chamar?"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border-2 border-custom-border/20 rounded-xl p-3 focus:border-dark-brown outline-none"
+              className="w-full border-2 border-custom-border/20 rounded-xl p-3 focus:border-[#3E2723] outline-none"
             />
           </div>
 
@@ -145,7 +145,7 @@ export default function Checkout() {
               placeholder="Para receber novidades no futuro"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border-2 border-custom-border/20 rounded-xl p-3 focus:border-dark-brown outline-none"
+              className="w-full border-2 border-custom-border/20 rounded-xl p-3 focus:border-[#3E2723] outline-none"
             />
           </div>
         </section>
@@ -155,7 +155,7 @@ export default function Checkout() {
           <button 
             type="submit"
             disabled={loading}
-            className="w-full bg-dark-brown text-white font-bold p-4 rounded-2xl shadow-xl hover:bg-medium-brown transition-colors disabled:bg-gray-400 flex justify-between items-center"
+            className="w-full bg-[#3E2723] text-white font-bold p-4 rounded-2xl shadow-xl hover:bg-[#4E342E] transition-colors disabled:bg-gray-400 flex justify-between items-center"
           >
             <span>{loading ? 'Processando...' : 'Confirmar Pedido'}</span>
             <span>{formatPrice(totalPrice())}</span>

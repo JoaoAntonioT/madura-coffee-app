@@ -94,7 +94,7 @@ export default function Menu() {
       <div className="max-w-md mx-auto p-4 space-y-8">
         {categories.map((category) => (
           <section key={category.id}>
-            <h2 className="text-2xl font-black text-dark-brown mb-4 border-b border-custom-border/20-2 border-dark-brown pb-2">
+            <h2 className="text-2xl font-black text-[#3E2723] mb-4 border-b border-custom-border/20-2 border-[#3E2723] pb-2">
               {category.name}
             </h2>
             
@@ -102,7 +102,7 @@ export default function Menu() {
               {category.products.map((product) => (
                 <div key={product.id} className="bg-white p-4 rounded-xl shadow-sm border border-custom-border/10 flex flex-col gap-2">
                   <div className="flex justify-between items-start gap-4">
-                    <h3 className="font-bold text-dark-brown text-lg leading-tight">{product.name}</h3>
+                    <h3 className="font-bold text-[#3E2723] text-lg leading-tight">{product.name}</h3>
                     <span className="font-bold text-amber-700 whitespace-nowrap">{formatPrice(product.price)}</span>
                   </div>
                   
@@ -112,7 +112,7 @@ export default function Menu() {
 
                   <button 
                     onClick={() => setSelectedProduct(product)}
-                    className="mt-2 w-full bg-amber-100 hover:bg-amber-200 text-dark-brown font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                    className="mt-2 w-full bg-amber-100 hover:bg-amber-200 text-[#3E2723] font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
                   >
                     <Plus size={18} />
                     Adicionar
@@ -128,7 +128,7 @@ export default function Menu() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-xl text-dark-brown">Adicionar item</h3>
+              <h3 className="font-bold text-xl text-[#3E2723]">Adicionar item</h3>
               <button onClick={() => setSelectedProduct(null)} className="p-2 text-custom-gray hover:bg-gray-100 rounded-full">
                 <X size={20} />
               </button>
@@ -141,7 +141,7 @@ export default function Menu() {
               Alguma observação? (Opcional)
             </label>
             <textarea 
-              className="w-full border-2 border-custom-border/20 rounded-xl p-3 mb-4 focus:border-dark-brown focus:ring-0 outline-none resize-none"
+              className="w-full border-2 border-custom-border/20 rounded-xl p-3 mb-4 focus:border-[#3E2723] focus:ring-0 outline-none resize-none"
               rows={3}
               placeholder="Ex: Sem chantilly, sem gelo..."
               value={observation}
@@ -150,7 +150,7 @@ export default function Menu() {
 
             <button 
               onClick={handleConfirmAdd}
-              className="w-full bg-dark-brown text-white font-bold py-3 rounded-xl hover:bg-medium-brown transition-colors"
+              className="w-full bg-[#3E2723] text-white font-bold py-3 rounded-xl hover:bg-[#4E342E] transition-colors"
             >
               Confirmar
             </button>
@@ -160,12 +160,12 @@ export default function Menu() {
 
       {totalItems > 0 && (
         <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto z-40">
-          <Link href="/checkout" className="bg-dark-brown text-white p-4 rounded-2xl shadow-xl flex items-center justify-between hover:bg-medium-brown transition-transform active:scale-95">
+          <Link href="/checkout" className="bg-[#3E2723] text-white p-4 rounded-2xl shadow-xl flex items-center justify-between hover:bg-[#4E342E] transition-transform active:scale-95">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-full">
                 <ShoppingBag size={20} />
               </div>
-              <span className="font-bold">{totalItems} {totalItems === 1 ? 'item' : 'itens'}</span>
+              <span className="font-bold flex items-center gap-2">Ver sacola <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">{totalItems}</span></span>
             </div>
             <span className="font-bold text-lg">{formatPrice(totalPrice)}</span>
           </Link>

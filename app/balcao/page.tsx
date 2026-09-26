@@ -435,15 +435,15 @@ export default function Balcao() {
   // ==========================================
   if (!user) {
     return (
-      <div className="min-h-screen bg-dark-brown flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#3E2723] flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center">
-          <div className="w-16 h-16 bg-amber-100 text-dark-brown rounded-full flex items-center justify-center mx-auto mb-6"><Lock size={32} /></div>
-          <h1 className="text-2xl font-black text-dark-brown mb-2">Acesso Restrito</h1>
+          <div className="w-16 h-16 bg-amber-100 text-[#3E2723] rounded-full flex items-center justify-center mx-auto mb-6"><Lock size={32} /></div>
+          <h1 className="text-2xl font-black text-[#3E2723] mb-2">Acesso Restrito</h1>
           <p className="text-custom-gray mb-6">Digite seu PIN de acesso à operação</p>
           <form onSubmit={handleLogin}>
-            <input type="password" inputMode="numeric" maxLength={6} placeholder="******" value={pinInput} onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))} className="w-full text-center text-3xl tracking-widest border-2 border-custom-border/20 rounded-xl p-4 mb-4 focus:border-dark-brown outline-none" />
+            <input type="password" inputMode="numeric" maxLength={6} placeholder="******" value={pinInput} onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))} className="w-full text-center text-3xl tracking-widest border-2 border-custom-border/20 rounded-xl p-4 mb-4 focus:border-[#3E2723] outline-none" />
             {error && <p className="text-red text-sm mb-4 font-medium">{error}</p>}
-            <button type="submit" className="w-full bg-dark-brown text-white font-bold py-4 rounded-xl hover:bg-medium-brown transition-colors">Entrar</button>
+            <button type="submit" className="w-full bg-[#3E2723] text-white font-bold py-4 rounded-xl hover:bg-[#4E342E] transition-colors">Entrar</button>
           </form>
         </div>
       </div>
@@ -474,27 +474,27 @@ export default function Balcao() {
             <Store size={20} /> Operação Madura
           </h1>
           <p className="text-amber-200 text-sm font-medium flex items-center gap-2">
-            {user.name} <span className="bg-medium-brown px-2 py-0.5 rounded text-xs">{user.role}</span>
+            {user.name} <span className="bg-[#4E342E] px-2 py-0.5 rounded text-xs">{user.role}</span>
           </p>
         </div>
-        <button onClick={handleLogout} className="p-2 bg-medium-brown rounded-lg hover:bg-amber-700 transition"><LogOut size={20} /></button>
+        <button onClick={handleLogout} className="p-2 bg-[#4E342E] rounded-lg hover:bg-amber-700 transition"><LogOut size={20} /></button>
       </header>
 
       <div className="bg-white border-b border-custom-border/20 flex px-2 overflow-x-auto">
-        <button onClick={() => setActiveTab('ATENDIMENTO')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'ATENDIMENTO' ? 'border-dark-brown text-dark-brown' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><LayoutDashboard size={20} /> Visão de Atendimento</button>
+        <button onClick={() => setActiveTab('ATENDIMENTO')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'ATENDIMENTO' ? 'border-[#3E2723] text-[#3E2723]' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><LayoutDashboard size={20} /> Visão de Atendimento</button>
         {(user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
-          <button onClick={() => setActiveTab('CAIXA')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'CAIXA' ? 'border-dark-brown text-dark-brown' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><DollarSign size={20} /> Caixa Rápido</button>
+          <button onClick={() => setActiveTab('CAIXA')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'CAIXA' ? 'border-[#3E2723] text-[#3E2723]' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><DollarSign size={20} /> Caixa Rápido</button>
         )}
         {(user.role === 'ADMIN' || user.role === 'BARISTA') && (
-          <button onClick={() => setActiveTab('PREPARO')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'PREPARO' ? 'border-dark-brown text-dark-brown' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><Coffee size={20} /> Fila de Preparo</button>
+          <button onClick={() => setActiveTab('PREPARO')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'PREPARO' ? 'border-[#3E2723] text-[#3E2723]' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><Coffee size={20} /> Fila de Preparo</button>
         )}
         {user.role === 'ADMIN' && (
           <>
-            <button onClick={() => setActiveTab('PRODUTOS')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'PRODUTOS' ? 'border-dark-brown text-dark-brown' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><Package size={20} /> Produtos & Receitas</button>
-            <button onClick={() => setActiveTab('EQUIPE')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'EQUIPE' ? 'border-dark-brown text-dark-brown' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><Users size={20} /> Equipe</button>
-            <button onClick={() => setActiveTab('HISTORICO')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'HISTORICO' ? 'border-dark-brown text-dark-brown' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><History size={20} /> Histórico</button>
-            <button onClick={() => setActiveTab('ESTOQUE')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'ESTOQUE' ? 'border-dark-brown text-dark-brown' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><ClipboardList size={20} /> Estoque</button>
-            <button onClick={() => setActiveTab('CONFIG')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'CONFIG' ? 'border-dark-brown text-dark-brown' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><Settings size={20} /> Ajustes</button>
+            <button onClick={() => setActiveTab('PRODUTOS')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'PRODUTOS' ? 'border-[#3E2723] text-[#3E2723]' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><Package size={20} /> Produtos & Receitas</button>
+            <button onClick={() => setActiveTab('EQUIPE')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'EQUIPE' ? 'border-[#3E2723] text-[#3E2723]' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><Users size={20} /> Equipe</button>
+            <button onClick={() => setActiveTab('HISTORICO')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'HISTORICO' ? 'border-[#3E2723] text-[#3E2723]' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><History size={20} /> Histórico</button>
+            <button onClick={() => setActiveTab('ESTOQUE')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'ESTOQUE' ? 'border-[#3E2723] text-[#3E2723]' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><ClipboardList size={20} /> Estoque</button>
+            <button onClick={() => setActiveTab('CONFIG')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b border-custom-border/20-2 transition-colors whitespace-nowrap ${activeTab === 'CONFIG' ? 'border-[#3E2723] text-[#3E2723]' : 'border-t border-custom-border/20ransparent text-custom-gray'}`}><Settings size={20} /> Ajustes</button>
           </>
         )}
       </div>
@@ -513,7 +513,7 @@ export default function Balcao() {
                 placeholder="Buscar por número do pedido (#1047) ou nome do cliente..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="block w-full pl-10 pr-3 py-3 border border-custom-border/30 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-900 focus:border-dark-brown sm:text-sm"
+                className="block w-full pl-10 pr-3 py-3 border border-custom-border/30 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-900 focus:border-[#3E2723] sm:text-sm"
               />
             </div>
           </div>
@@ -534,7 +534,7 @@ export default function Balcao() {
 
             <div className="space-y-4">
               <h2 className="font-bold text-medium-brown text-lg flex items-center gap-2">
-                <Coffee className="text-dark-brown" /> Fila de Preparo ({pedidosEmPreparo.length})
+                <Coffee className="text-[#3E2723]" /> Fila de Preparo ({pedidosEmPreparo.length})
               </h2>
               {pedidosEmPreparo.map(order => (
                 <OrderPreparoCard key={order.id} order={order} user={user} isPending={isPending} loadingId={loadingId} onAssumir={handleAssumir} onPronto={handleMarcarPronto} />
@@ -577,19 +577,19 @@ export default function Balcao() {
           <div className="space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center justify-between border-b border-custom-border/20 pb-4">
               <div className="flex items-center gap-2">
-                <Package className="text-dark-brown" size={24} />
-                <h2 className="text-xl font-black text-dark-brown">Cardápio & Fichas Técnicas</h2>
+                <Package className="text-[#3E2723]" size={24} />
+                <h2 className="text-xl font-black text-[#3E2723]">Cardápio & Fichas Técnicas</h2>
               </div>
               <div className="flex bg-gray-100 p-1 rounded-lg">
                 <button 
                   onClick={() => setProdutoSubTab('CARDAPIO')} 
-                  className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${produtoSubTab === 'CARDAPIO' ? 'bg-white text-dark-brown shadow-sm' : 'text-custom-gray hover:text-medium-brown'}`}
+                  className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${produtoSubTab === 'CARDAPIO' ? 'bg-white text-[#3E2723] shadow-sm' : 'text-custom-gray hover:text-medium-brown'}`}
                 >
                   Gestão de Cardápio
                 </button>
                 <button 
                   onClick={() => setProdutoSubTab('FICHAS')} 
-                  className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${produtoSubTab === 'FICHAS' ? 'bg-white text-dark-brown shadow-sm' : 'text-custom-gray hover:text-medium-brown'}`}
+                  className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${produtoSubTab === 'FICHAS' ? 'bg-white text-[#3E2723] shadow-sm' : 'text-custom-gray hover:text-medium-brown'}`}
                 >
                   Fichas Técnicas (Estoque)
                 </button>
@@ -607,7 +607,7 @@ export default function Balcao() {
             {produtoSubTab === 'CARDAPIO' && (
               <div className="space-y-6">
                 <div className="flex justify-end">
-                  <button onClick={() => setCategoryModal({name: '', sort_order: categories.length + 1})} className="bg-dark-brown text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-medium-brown transition">
+                  <button onClick={() => setCategoryModal({name: '', sort_order: categories.length + 1})} className="bg-[#3E2723] text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-[#4E342E] transition">
                     <Plus size={18} /> Nova Categoria
                   </button>
                 </div>
@@ -619,12 +619,12 @@ export default function Balcao() {
                       <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-custom-border/20 overflow-hidden">
                         <div className="bg-white px-4 py-3 border-b border-custom-border/20 flex justify-between items-center">
                           <div className="flex items-center gap-3">
-                            <h3 className="font-black text-lg text-dark-brown">{cat.name}</h3>
-                            <button onClick={() => setCategoryModal(cat)} className="text-custom-gray hover:text-dark-brown text-sm font-bold">Editar</button>
+                            <h3 className="font-black text-lg text-[#3E2723]">{cat.name}</h3>
+                            <button onClick={() => setCategoryModal(cat)} className="text-custom-gray hover:text-[#3E2723] text-sm font-bold">Editar</button>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button disabled={index === 0} onClick={() => handleMoverCategoria(cat.id, cat.sort_order, 'up')} className="p-1 text-custom-gray hover:text-dark-brown disabled:opacity-30">⬆️</button>
-                            <button disabled={index === categories.length - 1} onClick={() => handleMoverCategoria(cat.id, cat.sort_order, 'down')} className="p-1 text-custom-gray hover:text-dark-brown disabled:opacity-30">⬇️</button>
+                            <button disabled={index === 0} onClick={() => handleMoverCategoria(cat.id, cat.sort_order, 'up')} className="p-1 text-custom-gray hover:text-[#3E2723] disabled:opacity-30">⬆️</button>
+                            <button disabled={index === categories.length - 1} onClick={() => handleMoverCategoria(cat.id, cat.sort_order, 'down')} className="p-1 text-custom-gray hover:text-[#3E2723] disabled:opacity-30">⬇️</button>
                             <button onClick={() => handleExcluirCategoria(cat.id)} className="p-1 text-red hover:text-red"><Trash2 size={16} /></button>
                           </div>
                         </div>
@@ -635,11 +635,11 @@ export default function Balcao() {
                                 <div className="flex-1">
                                   <div className="flex justify-between items-start">
                                     <div>
-                                      <p className="font-bold text-dark-brown">{prod.name}</p>
+                                      <p className="font-bold text-[#3E2723]">{prod.name}</p>
                                       <p className="text-sm text-custom-gray mt-1 max-w-lg truncate">{prod.description}</p>
                                     </div>
                                     <div className="text-right ml-4">
-                                      <p className="font-black text-dark-brown">R$ {prod.price?.toFixed(2)}</p>
+                                      <p className="font-black text-[#3E2723]">R$ {prod.price?.toFixed(2)}</p>
                                     </div>
                                   </div>
                                 </div>
@@ -650,13 +650,13 @@ export default function Balcao() {
                                       {prod.is_available ? 'Ativo' : 'Esgotado'}
                                     </span>
                                   </label>
-                                  <button onClick={() => setProdutoModal(prod)} className="text-custom-gray hover:text-dark-brown font-bold text-sm bg-gray-100 px-3 py-1 rounded">Editar</button>
+                                  <button onClick={() => setProdutoModal(prod)} className="text-custom-gray hover:text-[#3E2723] font-bold text-sm bg-gray-100 px-3 py-1 rounded">Editar</button>
                                 </div>
                               </div>
                             ))}
                             {catProducts.length === 0 && <p className="text-sm text-custom-gray italic">Nenhum produto nesta categoria.</p>}
                           </div>
-                          <button onClick={() => setProdutoModal({name: '', description: '', price: 0, category_id: cat.id})} className="mt-4 text-dark-brown font-bold text-sm flex items-center gap-1 hover:underline">
+                          <button onClick={() => setProdutoModal({name: '', description: '', price: 0, category_id: cat.id})} className="mt-4 text-[#3E2723] font-bold text-sm flex items-center gap-1 hover:underline">
                             <Plus size={16} /> Adicionar Produto em {cat.name}
                           </button>
                         </div>
@@ -674,8 +674,8 @@ export default function Balcao() {
           <div className="bg-white p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden">
             <div className="flex justify-between items-center mb-6 border-b border-custom-border/20 pb-4">
               <div className="flex items-center gap-2">
-                <History className="text-dark-brown" size={24} />
-                <h2 className="text-xl font-black text-dark-brown">Histórico de Hoje</h2>
+                <History className="text-[#3E2723]" size={24} />
+                <h2 className="text-xl font-black text-[#3E2723]">Histórico de Hoje</h2>
               </div>
               <div className="flex gap-2">
                 <select 
@@ -720,7 +720,7 @@ export default function Balcao() {
                       .filter(order => historicoFilter === 'ALL' || order.status === historicoFilter)
                       .map(order => (
                       <tr key={order.id} onClick={() => setDetailModalOrder(order)} className="border-b border-custom-border/20 border-custom-border/10 hover:bg-white transition cursor-pointer">
-                        <td className="p-3 font-bold text-dark-brown">#{order.short_id}</td>
+                        <td className="p-3 font-bold text-[#3E2723]">#{order.short_id}</td>
                         <td className="p-3 text-medium-brown font-medium">{order.customer_name}</td>
                         <td className="p-3 text-custom-gray text-sm">{new Date(order.created_at).toLocaleTimeString('pt-BR')}</td>
                         <td className="p-3">
@@ -728,13 +728,13 @@ export default function Balcao() {
                             order.status === 'DELIVERED' ? 'bg-green text-green' :
                             order.status === 'CANCELLED' ? 'bg-red text-red' :
                             order.status === 'REFUNDED' ? 'bg-orange-100 text-orange-800' :
-                            'bg-gray-100 text-dark-brown'
+                            'bg-gray-100 text-[#3E2723]'
                           }`}>
                             {order.status === 'DELIVERED' ? 'ENTREGUE' : order.status === 'CANCELLED' ? 'CANCELADO' : order.status === 'REFUNDED' ? 'REEMBOLSADO' : 'EXPIRADO'}
                           </span>
                         </td>
                         <td className="p-3 text-custom-gray text-sm">{order.payment_method || '-'}</td>
-                        <td className="p-3 font-black text-dark-brown">R$ {order.total_amount.toFixed(2)}</td>
+                        <td className="p-3 font-black text-[#3E2723]">R$ {order.total_amount.toFixed(2)}</td>
                       </tr>
                     ))
                   )}
@@ -749,12 +749,12 @@ export default function Balcao() {
           <div className="bg-white p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden">
             <div className="flex justify-between items-center mb-6 border-b border-custom-border/20 pb-4">
               <div className="flex items-center gap-2">
-                <ClipboardList className="text-dark-brown" size={24} />
-                <h2 className="text-xl font-black text-dark-brown">Estoque de Insumos</h2>
+                <ClipboardList className="text-[#3E2723]" size={24} />
+                <h2 className="text-xl font-black text-[#3E2723]">Estoque de Insumos</h2>
               </div>
               <button 
                 onClick={() => setInsumoModal({ name: '', quantity: 0, unit: 'g' })}
-                className="bg-dark-brown text-white px-4 py-2 rounded-lg font-bold hover:bg-medium-brown transition flex items-center gap-2"
+                className="bg-[#3E2723] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#4E342E] transition flex items-center gap-2"
               >
                 <Plus size={18} /> Novo Insumo
               </button>
@@ -781,8 +781,8 @@ export default function Balcao() {
                   ) : (
                     estoque.map(item => (
                       <tr key={item.id} onClick={() => setInsumoModal(item)} className="border-b border-custom-border/20 border-custom-border/10 hover:bg-white transition cursor-pointer">
-                        <td className="p-3 font-bold text-dark-brown">{item.name}</td>
-                        <td className="p-3 font-black text-xl text-dark-brown text-center">{item.quantity}</td>
+                        <td className="p-3 font-bold text-[#3E2723]">{item.name}</td>
+                        <td className="p-3 font-black text-xl text-[#3E2723] text-center">{item.quantity}</td>
                         <td className="p-3 text-custom-gray">{item.unit}</td>
                         <td className="p-3">
                           {item.quantity <= 0 ? (
@@ -805,27 +805,27 @@ export default function Balcao() {
         {activeTab === 'EQUIPE' && (
           <div className="bg-white p-6 rounded-xl shadow-sm max-w-md mx-auto border">
             <div className="flex items-center gap-2 mb-6 border-b border-custom-border/20 pb-4">
-              <UserPlus className="text-dark-brown" size={24} />
-              <h2 className="text-xl font-black text-dark-brown">Cadastrar Operador</h2>
+              <UserPlus className="text-[#3E2723]" size={24} />
+              <h2 className="text-xl font-black text-[#3E2723]">Cadastrar Operador</h2>
             </div>
             <form onSubmit={handleCadastro} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-medium-brown mb-1">Nome Completo</label>
-                <input name="name" type="text" required className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown" placeholder="Ex: Maria Vendedora"/>
+                <input name="name" type="text" required className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723]" placeholder="Ex: Maria Vendedora"/>
               </div>
               <div>
                 <label className="block text-sm font-bold text-medium-brown mb-1">PIN de Acesso (6 dígitos)</label>
-                <input name="pin" type="password" pattern="[0-9]*" inputMode="numeric" required maxLength={6} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown" placeholder="******"/>
+                <input name="pin" type="password" pattern="[0-9]*" inputMode="numeric" required maxLength={6} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723]" placeholder="******"/>
               </div>
               <div>
                 <label className="block text-sm font-bold text-medium-brown mb-1">Cargo / Permissão</label>
-                <select name="role" required className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown bg-white">
+                <select name="role" required className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] bg-white">
                   <option value="BARISTA">Barista (Fila de Preparo)</option>
                   <option value="VENDEDOR">Vendedor (Cobranças)</option>
                   <option value="ADMIN">Administrador (Acesso Total)</option>
                 </select>
               </div>
-              <button type="submit" disabled={isPending} className="w-full bg-dark-brown text-white font-black py-4 rounded-lg flex items-center justify-center gap-2 mt-4 hover:bg-medium-brown transition-colors disabled:opacity-50">
+              <button type="submit" disabled={isPending} className="w-full bg-[#3E2723] text-white font-black py-4 rounded-lg flex items-center justify-center gap-2 mt-4 hover:bg-[#4E342E] transition-colors disabled:opacity-50">
                 {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Cadastrar Membro'}
               </button>
             </form>
@@ -840,7 +840,7 @@ export default function Balcao() {
             <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative animate-in zoom-in-95">
               <button onClick={() => setCheckoutModalOrder(null)} className="absolute top-4 right-4 text-custom-gray hover:text-medium-brown"><X size={24} /></button>
               
-              <h3 className="font-black text-2xl text-dark-brown mb-1">#{checkoutModalOrder.short_id}</h3>
+              <h3 className="font-black text-2xl text-[#3E2723] mb-1">#{checkoutModalOrder.short_id}</h3>
               <p className="text-medium-brown font-medium mb-4">{checkoutModalOrder.customer_name}</p>
 
               <div className="bg-white p-4 rounded-lg border border-custom-border/10 space-y-2 mb-4">
@@ -856,7 +856,7 @@ export default function Balcao() {
 
               <div className="flex justify-between items-center mb-6 border-b border-custom-border/20 pb-4">
                 <span className="font-bold text-custom-gray">TOTAL A COBRAR</span>
-                <span className="text-2xl font-black text-dark-brown">R$ {checkoutModalOrder.total_amount.toFixed(2)}</span>
+                <span className="text-2xl font-black text-[#3E2723]">R$ {checkoutModalOrder.total_amount.toFixed(2)}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -886,7 +886,7 @@ export default function Balcao() {
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl text-center animate-in zoom-in-95">
               <div className="w-16 h-16 bg-red text-red rounded-full flex items-center justify-center mx-auto mb-4"><Ban size={32} /></div>
-              <h3 className="font-black text-xl text-dark-brown mb-2">Cancelar Pedido #{cancelModalOrder.short_id}?</h3>
+              <h3 className="font-black text-xl text-[#3E2723] mb-2">Cancelar Pedido #{cancelModalOrder.short_id}?</h3>
               <p className="text-sm text-custom-gray mb-6">O pedido de {cancelModalOrder.customer_name} será arquivado e não aparecerá mais na fila.</p>
               
               <div className="grid grid-cols-2 gap-3">
@@ -912,11 +912,11 @@ export default function Balcao() {
               <button onClick={() => setDetailModalOrder(null)} className="absolute top-4 right-4 text-custom-gray hover:text-medium-brown"><X size={24} /></button>
               
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-amber-100 text-dark-brown rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-amber-100 text-[#3E2723] rounded-full flex items-center justify-center">
                   <Coffee size={24} />
                 </div>
                 <div>
-                  <h3 className="font-black text-2xl text-dark-brown">#{detailModalOrder.short_id}</h3>
+                  <h3 className="font-black text-2xl text-[#3E2723]">#{detailModalOrder.short_id}</h3>
                   <p className="text-custom-gray font-medium">{detailModalOrder.customer_name}</p>
                 </div>
               </div>
@@ -925,19 +925,19 @@ export default function Balcao() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white p-3 rounded-lg border border-custom-border/10">
                     <p className="text-xs font-bold text-custom-gray mb-1">Status Final</p>
-                    <p className="font-bold text-dark-brown">{detailModalOrder.status}</p>
+                    <p className="font-bold text-[#3E2723]">{detailModalOrder.status}</p>
                   </div>
                   <div className="bg-white p-3 rounded-lg border border-custom-border/10">
                     <p className="text-xs font-bold text-custom-gray mb-1">Pagamento</p>
-                    <p className="font-bold text-dark-brown">{detailModalOrder.payment_method || 'Não Pago'}</p>
+                    <p className="font-bold text-[#3E2723]">{detailModalOrder.payment_method || 'Não Pago'}</p>
                   </div>
                   <div className="bg-white p-3 rounded-lg border border-custom-border/10">
                     <p className="text-xs font-bold text-custom-gray mb-1">Total</p>
-                    <p className="font-bold text-dark-brown">R$ {detailModalOrder.total_amount.toFixed(2)}</p>
+                    <p className="font-bold text-[#3E2723]">R$ {detailModalOrder.total_amount.toFixed(2)}</p>
                   </div>
                   <div className="bg-white p-3 rounded-lg border border-custom-border/10">
                     <p className="text-xs font-bold text-custom-gray mb-1">Responsável (Preparo)</p>
-                    <p className="font-bold text-dark-brown">
+                    <p className="font-bold text-[#3E2723]">
                       {teamMembers.find(t => t.id === detailModalOrder.assigned_to)?.name || 'N/A'}
                     </p>
                   </div>
@@ -981,7 +981,7 @@ export default function Balcao() {
                     </div>
                   ) : refundStep === 1 ? (
                     <div className="space-y-3">
-                      <p className="text-sm font-bold text-dark-brown text-center mb-2">Qual tipo de reembolso?</p>
+                      <p className="text-sm font-bold text-[#3E2723] text-center mb-2">Qual tipo de reembolso?</p>
                       <div className="grid grid-cols-2 gap-3">
                         <button 
                           onClick={() => handleReembolsar(detailModalOrder.id, false)}
@@ -1001,7 +1001,7 @@ export default function Balcao() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <p className="text-sm font-bold text-dark-brown text-center mb-2">Digite o valor a reembolsar:</p>
+                      <p className="text-sm font-bold text-[#3E2723] text-center mb-2">Digite o valor a reembolsar:</p>
                       <input 
                         type="number" 
                         step="0.01" 
@@ -1033,13 +1033,13 @@ export default function Balcao() {
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative animate-in zoom-in-95">
               <button onClick={() => setCategoryModal(null)} className="absolute top-4 right-4 text-custom-gray hover:text-medium-brown"><X size={24} /></button>
-              <h3 className="font-black text-xl text-dark-brown mb-4">{categoryModal.id ? 'Editar Categoria' : 'Nova Categoria'}</h3>
+              <h3 className="font-black text-xl text-[#3E2723] mb-4">{categoryModal.id ? 'Editar Categoria' : 'Nova Categoria'}</h3>
               <form onSubmit={handleSalvarCategoria} className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-medium-brown mb-1">Nome da Categoria</label>
-                  <input type="text" required value={categoryModal.name} onChange={(e) => setCategoryModal({...categoryModal, name: e.target.value})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown outline-none" placeholder="Ex: Bebidas Quentes" />
+                  <input type="text" required value={categoryModal.name} onChange={(e) => setCategoryModal({...categoryModal, name: e.target.value})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none" placeholder="Ex: Bebidas Quentes" />
                 </div>
-                <button type="submit" disabled={isPending} className="w-full bg-dark-brown text-white font-black py-3 rounded-lg hover:bg-medium-brown transition">Salvar Categoria</button>
+                <button type="submit" disabled={isPending} className="w-full bg-[#3E2723] text-white font-black py-3 rounded-lg hover:bg-[#4E342E] transition">Salvar Categoria</button>
               </form>
             </div>
           </div>
@@ -1052,24 +1052,24 @@ export default function Balcao() {
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
             <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow-xl relative animate-in zoom-in-95 my-auto">
               <button onClick={() => setProdutoModal(null)} className="absolute top-4 right-4 text-custom-gray hover:text-medium-brown"><X size={24} /></button>
-              <h3 className="font-black text-xl text-dark-brown mb-4">{produtoModal.id ? 'Editar Produto' : 'Novo Produto'}</h3>
+              <h3 className="font-black text-xl text-[#3E2723] mb-4">{produtoModal.id ? 'Editar Produto' : 'Novo Produto'}</h3>
               <form onSubmit={handleSalvarProduto} className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-medium-brown mb-1">Nome do Produto</label>
-                  <input type="text" required value={produtoModal.name} onChange={(e) => setProdutoModal({...produtoModal, name: e.target.value})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown outline-none" placeholder="Ex: Espresso Duplo" />
+                  <input type="text" required value={produtoModal.name} onChange={(e) => setProdutoModal({...produtoModal, name: e.target.value})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none" placeholder="Ex: Espresso Duplo" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-medium-brown mb-1">Descrição</label>
-                  <textarea value={produtoModal.description} onChange={(e) => setProdutoModal({...produtoModal, description: e.target.value})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown outline-none resize-none" rows={3} placeholder="Breve descrição para o cliente..." />
+                  <textarea value={produtoModal.description} onChange={(e) => setProdutoModal({...produtoModal, description: e.target.value})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none resize-none" rows={3} placeholder="Breve descrição para o cliente..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-medium-brown mb-1">Preço (R$)</label>
-                    <input type="number" step="0.01" required value={produtoModal.price} onChange={(e) => setProdutoModal({...produtoModal, price: parseFloat(e.target.value) || 0})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown outline-none" />
+                    <input type="number" step="0.01" required value={produtoModal.price} onChange={(e) => setProdutoModal({...produtoModal, price: parseFloat(e.target.value) || 0})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-medium-brown mb-1">Categoria</label>
-                    <select value={produtoModal.category_id} onChange={(e) => setProdutoModal({...produtoModal, category_id: e.target.value})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown outline-none bg-white">
+                    <select value={produtoModal.category_id} onChange={(e) => setProdutoModal({...produtoModal, category_id: e.target.value})} className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none bg-white">
                       {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
@@ -1078,7 +1078,7 @@ export default function Balcao() {
                   {produtoModal.id && (
                     <button type="button" onClick={() => handleExcluirProduto(produtoModal.id!)} className="p-3 text-red bg-red-50 rounded-lg hover:bg-red font-bold"><Trash2 size={20} /></button>
                   )}
-                  <button type="submit" disabled={isPending} className="flex-1 bg-dark-brown text-white font-black py-3 rounded-lg hover:bg-medium-brown transition">Salvar Produto</button>
+                  <button type="submit" disabled={isPending} className="flex-1 bg-[#3E2723] text-white font-black py-3 rounded-lg hover:bg-[#4E342E] transition">Salvar Produto</button>
                 </div>
               </form>
             </div>
@@ -1094,11 +1094,11 @@ export default function Balcao() {
               <button onClick={() => setInsumoModal(null)} className="absolute top-4 right-4 text-custom-gray hover:text-medium-brown"><X size={24} /></button>
               
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-amber-100 text-dark-brown rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-amber-100 text-[#3E2723] rounded-full flex items-center justify-center">
                   <ClipboardList size={24} />
                 </div>
                 <div>
-                  <h3 className="font-black text-xl text-dark-brown">{insumoModal.id ? 'Editar Insumo' : 'Novo Insumo'}</h3>
+                  <h3 className="font-black text-xl text-[#3E2723]">{insumoModal.id ? 'Editar Insumo' : 'Novo Insumo'}</h3>
                 </div>
               </div>
 
@@ -1110,7 +1110,7 @@ export default function Balcao() {
                     required 
                     value={insumoModal.name}
                     onChange={(e) => setInsumoModal({...insumoModal, name: e.target.value})}
-                    className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown outline-none" 
+                    className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none" 
                     placeholder="Ex: Café em grão"
                   />
                 </div>
@@ -1123,7 +1123,7 @@ export default function Balcao() {
                       step="0.01"
                       value={insumoModal.quantity}
                       onChange={(e) => setInsumoModal({...insumoModal, quantity: parseFloat(e.target.value) || 0})}
-                      className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown outline-none" 
+                      className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none" 
                     />
                   </div>
                   <div>
@@ -1131,7 +1131,7 @@ export default function Balcao() {
                     <select 
                       value={insumoModal.unit}
                       onChange={(e) => setInsumoModal({...insumoModal, unit: e.target.value})}
-                      className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-dark-brown outline-none bg-white"
+                      className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none bg-white"
                     >
                       <option value="g">g (gramas)</option>
                       <option value="ml">ml (mililitros)</option>
@@ -1153,7 +1153,7 @@ export default function Balcao() {
                   <button 
                     type="submit" 
                     disabled={isPending} 
-                    className="flex-1 bg-dark-brown text-white font-black py-3 rounded-lg hover:bg-medium-brown transition flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="flex-1 bg-[#3E2723] text-white font-black py-3 rounded-lg hover:bg-[#4E342E] transition flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isPending ? <Loader2 size={18} className="animate-spin" /> : 'Salvar Insumo'}
                   </button>
@@ -1167,17 +1167,17 @@ export default function Balcao() {
         {activeTab === 'CONFIG' && (
           <div className="bg-white p-6 rounded-xl shadow-sm border max-w-2xl mx-auto">
             <div className="flex items-center gap-2 mb-6 border-b border-custom-border/20 pb-4">
-              <Settings className="text-dark-brown" size={24} />
-              <h2 className="text-xl font-black text-dark-brown">Ajustes da Loja</h2>
+              <Settings className="text-[#3E2723]" size={24} />
+              <h2 className="text-xl font-black text-[#3E2723]">Ajustes da Loja</h2>
             </div>
 
             <div className="space-y-6">
               <div>
-                <h3 className="font-bold text-dark-brown mb-4">Métodos de Pagamento Permitidos</h3>
+                <h3 className="font-bold text-[#3E2723] mb-4">Métodos de Pagamento Permitidos</h3>
                 <div className="space-y-4">
                   <label className="flex items-center justify-between p-4 border rounded-lg hover:bg-white cursor-pointer transition">
                     <div>
-                      <p className="font-bold text-dark-brown">PIX Online (Mercado Pago)</p>
+                      <p className="font-bold text-[#3E2723]">PIX Online (Mercado Pago)</p>
                       <p className="text-sm text-custom-gray">Permite pagamento via QRCode PIX no celular.</p>
                     </div>
                     <input type="checkbox" checked={paymentSettings.pix} onChange={(e) => {
@@ -1189,7 +1189,7 @@ export default function Balcao() {
                   
                   <label className="flex items-center justify-between p-4 border rounded-lg hover:bg-white cursor-pointer transition">
                     <div>
-                      <p className="font-bold text-dark-brown">Cartão de Crédito Online (Mercado Pago)</p>
+                      <p className="font-bold text-[#3E2723]">Cartão de Crédito Online (Mercado Pago)</p>
                       <p className="text-sm text-custom-gray">Permite pagamento digitando cartão no celular.</p>
                     </div>
                     <input type="checkbox" checked={paymentSettings.credit_card} onChange={(e) => {
@@ -1201,7 +1201,7 @@ export default function Balcao() {
 
                   <label className="flex items-center justify-between p-4 border rounded-lg hover:bg-white cursor-pointer transition">
                     <div>
-                      <p className="font-bold text-dark-brown">Pagar no Balcão</p>
+                      <p className="font-bold text-[#3E2723]">Pagar no Balcão</p>
                       <p className="text-sm text-custom-gray">Permite que o cliente faça o pedido e pague presencialmente.</p>
                     </div>
                     <input type="checkbox" checked={paymentSettings.counter} onChange={(e) => {
@@ -1234,9 +1234,9 @@ function OrderCaixaCard({ order, user, onOpenCheckout, onOpenCancel }: any) {
         <Clock size={12} /> {formatTime(order.created_at)}
       </div>
       <div className="mt-2">
-        <h3 className="font-black text-xl text-dark-brown">#{order.short_id}</h3>
+        <h3 className="font-black text-xl text-[#3E2723]">#{order.short_id}</h3>
         <p className="text-medium-brown font-medium text-sm">{order.customer_name}</p>
-        <p className="text-md font-black text-dark-brown mt-1">R$ {order.total_amount.toFixed(2)}</p>
+        <p className="text-md font-black text-[#3E2723] mt-1">R$ {order.total_amount.toFixed(2)}</p>
       </div>
 
       {isPayingOnline ? (
@@ -1261,13 +1261,13 @@ function OrderCaixaCard({ order, user, onOpenCheckout, onOpenCancel }: any) {
 
 function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPronto }: any) {
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-dark-brown flex flex-col sm:flex-row justify-between gap-4 relative">
+    <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-[#3E2723] flex flex-col sm:flex-row justify-between gap-4 relative">
       <div className="absolute top-2 right-4 flex items-center gap-1 text-custom-gray text-xs font-bold">
         <Clock size={12} /> {formatTime(order.created_at)}
       </div>
       <div className="flex-1 mt-4 sm:mt-0">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-black text-xl text-dark-brown">#{order.short_id}</h3>
+          <h3 className="font-black text-xl text-[#3E2723]">#{order.short_id}</h3>
           {order.status === 'IN_PRODUCTION' && <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold">Em Produção</span>}
         </div>
         <p className="text-medium-brown font-medium text-sm mb-3">Cliente: {order.customer_name}</p>
@@ -1286,7 +1286,7 @@ function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPron
               {isPending && loadingId === order.id ? <Loader2 size={16} className="animate-spin" /> : 'Assumir Pedido'}
             </button>
           ) : (
-            <button onClick={() => onPronto(order.id)} disabled={(isPending && loadingId === order.id) || order.assigned_to !== user.id} className="bg-dark-brown text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-medium-brown disabled:opacity-50 flex items-center justify-center gap-2" title={order.assigned_to !== user.id ? "Outro barista assumiu" : ""}>
+            <button onClick={() => onPronto(order.id)} disabled={(isPending && loadingId === order.id) || order.assigned_to !== user.id} className="bg-[#3E2723] text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-[#4E342E] disabled:opacity-50 flex items-center justify-center gap-2" title={order.assigned_to !== user.id ? "Outro barista assumiu" : ""}>
               {isPending && loadingId === order.id ? <Loader2 size={16} className="animate-spin" /> : <Coffee size={16} />} Pronto
             </button>
           )
@@ -1329,7 +1329,7 @@ function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: a
 
   return (
     <div className="bg-white p-5 rounded-xl shadow-sm border border-custom-border/20">
-      <h3 className="font-black text-dark-brown text-xl mb-4 border-b border-custom-border/20 pb-2">{product.name}</h3>
+      <h3 className="font-black text-[#3E2723] text-xl mb-4 border-b border-custom-border/20 pb-2">{product.name}</h3>
       <div className="space-y-4 mb-4">
         <div>
           <div className="flex justify-between items-center mb-2">
@@ -1348,7 +1348,7 @@ function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: a
                     if (selItem) newIng[idx].unit = selItem.unit; // Auto-preenche a unidade
                     setIngredients(newIng) 
                   }} 
-                  className="flex-1 border rounded p-2 text-sm outline-none focus:border-dark-brown bg-white"
+                  className="flex-1 border rounded p-2 text-sm outline-none focus:border-[#3E2723] bg-white"
                 >
                   <option value="" disabled>Selecione um insumo...</option>
                   {estoque.map(item => (
@@ -1358,7 +1358,7 @@ function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: a
                     <option value={ing.name}>{ing.name} (Fora do Estoque)</option>
                   )}
                 </select>
-                <input type="number" placeholder="Qtd" value={ing.quantity} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].quantity = Number(e.target.value); setIngredients(newIng) }} className="w-16 border rounded p-2 text-sm outline-none focus:border-dark-brown" />
+                <input type="number" placeholder="Qtd" value={ing.quantity} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].quantity = Number(e.target.value); setIngredients(newIng) }} className="w-16 border rounded p-2 text-sm outline-none focus:border-[#3E2723]" />
                 <span className="w-10 text-center text-sm font-bold text-custom-gray pt-2">{ing.unit}</span>
                 <button type="button" onClick={() => setIngredients(ingredients.filter((_, i) => i !== idx))} className="text-red p-2 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
               </div>
@@ -1368,7 +1368,7 @@ function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: a
         </div>
         <div>
           <label className="block text-sm font-bold text-medium-brown mb-2">Modo de Preparo (Instruções)</label>
-          <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Passo a passo para o barista..." className="w-full border-2 border-custom-border/10 rounded-lg p-3 text-sm focus:border-dark-brown outline-none resize-none bg-white" rows={3} />
+          <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Passo a passo para o barista..." className="w-full border-2 border-custom-border/10 rounded-lg p-3 text-sm focus:border-[#3E2723] outline-none resize-none bg-white" rows={3} />
         </div>
       </div>
       <button onClick={handleSave} disabled={loading} className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-black transition flex justify-center items-center gap-2">
