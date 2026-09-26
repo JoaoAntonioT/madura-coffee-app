@@ -330,3 +330,15 @@ export async function excluirProduto(id: string) {
   revalidatePath('/balcao')
   return { success: true }
 }
+
+// ==========================================
+// CONFIGURAÇÕES GERAIS
+// ==========================================
+
+export async function atualizarMetodosPagamento(methods: {pix: boolean, credit_card: boolean, counter: boolean}) {
+  const { error } = await supabase.from('settings').update({ value: methods }).eq('id', 'payment_methods')
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/checkout')
+  revalidatePath('/balcao')
+  return { success: true }
+}

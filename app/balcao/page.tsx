@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download, RotateCcw, AlertTriangle, ClipboardList } from 'lucide-react'
-import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido, salvarInsumoEstoque, excluirInsumoEstoque, adicionarCategoria, editarCategoria, moverCategoria, excluirCategoria, salvarProduto, toggleProdutoDisponivel, excluirProduto } from './actions'
+import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download, RotateCcw, AlertTriangle, ClipboardList, Settings } from 'lucide-react'
+import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido, salvarInsumoEstoque, excluirInsumoEstoque, adicionarCategoria, editarCategoria, moverCategoria, excluirCategoria, salvarProduto, toggleProdutoDisponivel, excluirProduto, atualizarMetodosPagamento } from './actions'
 
 // ==========================================
 // TIPAGENS
@@ -56,7 +56,8 @@ export default function Balcao() {
   const [pinInput, setPinInput] = useState('')
   const [error, setError] = useState('')
   
-  const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE' | 'PRODUTOS' | 'HISTORICO' | 'ESTOQUE'>('ATENDIMENTO')
+  const [activeTab, setActiveTab] = useState<'ATENDIMENTO' | 'CAIXA' | 'PREPARO' | 'EQUIPE' | 'PRODUTOS' | 'HISTORICO' | 'ESTOQUE' | 'CONFIG'>('ATENDIMENTO')
+  const [paymentSettings, setPaymentSettings] = useState({ pix: true, credit_card: true, counter: true })
   const [orders, setOrders] = useState<Order[]>([])
   const [productsList, setProductsList] = useState<ProductInfo[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -148,6 +149,15 @@ export default function Balcao() {
         }
       }
       fetchData()
+      return
+    }
+
+    if (activeTab === 'CONFIG') {
+      const fetchConfig = async () => {
+        const { data } = await supabase.from('settings').select('value').eq('id', 'payment_methods').single()
+        if (data) setPaymentSettings(data.value)
+      }
+      fetchConfig()
       return
     }
 
@@ -484,6 +494,7 @@ export default function Balcao() {
             <button onClick={() => setActiveTab('EQUIPE')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'EQUIPE' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><Users size={20} /> Equipe</button>
             <button onClick={() => setActiveTab('HISTORICO')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'HISTORICO' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><History size={20} /> Histórico</button>
             <button onClick={() => setActiveTab('ESTOQUE')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'ESTOQUE' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><ClipboardList size={20} /> Estoque</button>
+            <button onClick={() => setActiveTab('CONFIG')} className={`py-4 px-4 font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'CONFIG' ? 'border-amber-900 text-amber-900' : 'border-transparent text-gray-400'}`}><Settings size={20} /> Ajustes</button>
           </>
         )}
       </div>
@@ -1148,6 +1159,59 @@ export default function Balcao() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ABA CONFIG */}
+        {activeTab === 'CONFIG' && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border max-w-2xl mx-auto">
+            <div className="flex items-center gap-2 mb-6 border-b pb-4">
+              <Settings className="text-amber-900" size={24} />
+              <h2 className="text-xl font-black text-gray-800">Ajustes da Loja</h2>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-bold text-gray-800 mb-4">Métodos de Pagamento Permitidos</h3>
+                <div className="space-y-4">
+                  <label className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition">
+                    <div>
+                      <p className="font-bold text-gray-900">PIX Online (Mercado Pago)</p>
+                      <p className="text-sm text-gray-500">Permite pagamento via QRCode PIX no celular.</p>
+                    </div>
+                    <input type="checkbox" checked={paymentSettings.pix} onChange={(e) => {
+                      const ns = {...paymentSettings, pix: e.target.checked}
+                      setPaymentSettings(ns)
+                      startTransition(() => { atualizarMetodosPagamento(ns) })
+                    }} className="w-5 h-5 accent-amber-600" />
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition">
+                    <div>
+                      <p className="font-bold text-gray-900">Cartão de Crédito Online (Mercado Pago)</p>
+                      <p className="text-sm text-gray-500">Permite pagamento digitando cartão no celular.</p>
+                    </div>
+                    <input type="checkbox" checked={paymentSettings.credit_card} onChange={(e) => {
+                      const ns = {...paymentSettings, credit_card: e.target.checked}
+                      setPaymentSettings(ns)
+                      startTransition(() => { atualizarMetodosPagamento(ns) })
+                    }} className="w-5 h-5 accent-amber-600" />
+                  </label>
+
+                  <label className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition">
+                    <div>
+                      <p className="font-bold text-gray-900">Pagar no Balcão</p>
+                      <p className="text-sm text-gray-500">Permite que o cliente faça o pedido e pague presencialmente.</p>
+                    </div>
+                    <input type="checkbox" checked={paymentSettings.counter} onChange={(e) => {
+                      const ns = {...paymentSettings, counter: e.target.checked}
+                      setPaymentSettings(ns)
+                      startTransition(() => { atualizarMetodosPagamento(ns) })
+                    }} className="w-5 h-5 accent-amber-600" />
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         )}

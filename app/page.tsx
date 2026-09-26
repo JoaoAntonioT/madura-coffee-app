@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { Plus, X, ShoppingBag, ArrowRight } from 'lucide-react'
 import { useCartStore } from '../lib/store'
 import Link from 'next/link'
+import Image from 'next/image'
 
 type Product = {
   id: string
@@ -86,8 +87,8 @@ export default function Menu() {
         </Link>
       )}
 
-      <header className="bg-amber-900 text-white p-4 sticky top-0 z-10 shadow-md">
-        <h1 className="text-xl font-bold text-center">MADURA COFFEE</h1>
+      <header className="bg-amber-900 p-4 sticky top-0 z-10 shadow-md flex justify-center items-center">
+        <Image src="/logo.png" alt="Madura Coffee" width={200} height={60} className="object-contain max-h-12" priority />
       </header>
 
       <div className="max-w-md mx-auto p-4 space-y-8">
