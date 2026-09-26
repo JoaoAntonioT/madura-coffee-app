@@ -71,9 +71,9 @@ export default function Checkout() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Seu carrinho está vazio</h2>
-        <Link href="/" className="text-amber-900 font-bold bg-amber-100 px-6 py-3 rounded-xl">
+      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-4">
+        <h2 className="text-xl font-bold text-dark-brown mb-4">Seu carrinho está vazio</h2>
+        <Link href="/" className="text-dark-brown font-bold bg-amber-100 px-6 py-3 rounded-xl">
           Voltar ao Cardápio
         </Link>
       </div>
@@ -91,29 +91,29 @@ export default function Checkout() {
 
       <form onSubmit={handleCheckout} className="max-w-md mx-auto p-4 space-y-6">
         {/* Lista de Itens */}
-        <section className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-4">
+        <section className="bg-white p-4 rounded-xl shadow-sm border border-custom-border/10 space-y-4">
           {items.map(item => (
-            <div key={item.id} className="flex flex-col gap-2 border-b border-gray-50 pb-4 last:border-0 last:pb-0">
-              <div className="flex justify-between font-bold text-gray-800">
+            <div key={item.id} className="flex flex-col gap-2 border-b border-custom-border/20 border-gray-50 pb-4 last:border-0 last:pb-0">
+              <div className="flex justify-between font-bold text-dark-brown">
                 <span>{item.product.name}</span>
                 <span className="text-amber-700">{formatPrice(item.product.price * item.quantity)}</span>
               </div>
               
               {item.observation && (
-                <p className="text-sm text-gray-500 italic">Obs: {item.observation}</p>
+                <p className="text-sm text-custom-gray italic">Obs: {item.observation}</p>
               )}
 
               <div className="flex items-center justify-between mt-2">
-                <button type="button" onClick={() => removeItem(item.id)} className="text-red-500 p-2 hover:bg-red-50 rounded-lg">
+                <button type="button" onClick={() => removeItem(item.id)} className="text-red p-2 hover:bg-red-50 rounded-lg">
                   <Trash2 size={18} />
                 </button>
 
                 <div className="flex items-center gap-3 bg-gray-100 rounded-lg p-1">
-                  <button type="button" onClick={() => updateQuantity(item.id, -1)} className="p-2 bg-white rounded shadow-sm text-gray-700">
+                  <button type="button" onClick={() => updateQuantity(item.id, -1)} className="p-2 bg-white rounded shadow-sm text-medium-brown">
                     <Minus size={16} />
                   </button>
                   <span className="font-bold w-6 text-center">{item.quantity}</span>
-                  <button type="button" onClick={() => updateQuantity(item.id, 1)} className="p-2 bg-white rounded shadow-sm text-gray-700">
+                  <button type="button" onClick={() => updateQuantity(item.id, 1)} className="p-2 bg-white rounded shadow-sm text-medium-brown">
                     <Plus size={16} />
                   </button>
                 </div>
@@ -123,29 +123,29 @@ export default function Checkout() {
         </section>
 
         {/* Dados do Cliente */}
-        <section className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-4">
-          <h2 className="font-bold text-gray-800">Seus dados para entrega</h2>
+        <section className="bg-white p-4 rounded-xl shadow-sm border border-custom-border/10 space-y-4">
+          <h2 className="font-bold text-dark-brown">Seus dados para entrega</h2>
           
           <div>
-            <label className="block text-sm font-semibold text-gray-600 mb-1">Nome completo (Obrigatório)</label>
+            <label className="block text-sm font-semibold text-medium-brown mb-1">Nome completo (Obrigatório)</label>
             <input 
               required
               type="text"
               placeholder="Como devemos te chamar?"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-amber-900 outline-none"
+              className="w-full border-2 border-custom-border/20 rounded-xl p-3 focus:border-dark-brown outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-600 mb-1">E-mail (Opcional)</label>
+            <label className="block text-sm font-semibold text-medium-brown mb-1">E-mail (Opcional)</label>
             <input 
               type="email"
               placeholder="Para receber novidades no futuro"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-amber-900 outline-none"
+              className="w-full border-2 border-custom-border/20 rounded-xl p-3 focus:border-dark-brown outline-none"
             />
           </div>
         </section>
@@ -155,7 +155,7 @@ export default function Checkout() {
           <button 
             type="submit"
             disabled={loading}
-            className="w-full bg-amber-900 text-white font-bold p-4 rounded-2xl shadow-xl hover:bg-amber-800 transition-colors disabled:bg-gray-400 flex justify-between items-center"
+            className="w-full bg-dark-brown text-white font-bold p-4 rounded-2xl shadow-xl hover:bg-medium-brown transition-colors disabled:bg-gray-400 flex justify-between items-center"
           >
             <span>{loading ? 'Processando...' : 'Confirmar Pedido'}</span>
             <span>{formatPrice(totalPrice())}</span>
