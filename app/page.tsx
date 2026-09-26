@@ -80,7 +80,7 @@ export default function Menu() {
   return (
     <main className="min-h-screen bg-transparent pb-24 relative">
       
-      {/* ALERTA DE PEDIDO ATIVO */}
+      {/* ALERTA DE PEDIDO ATIVO - teste */}
       {activeToken && (
         <Link href={`/pedido/${activeToken}`} className="bg-blue-600 text-white p-3 flex items-center justify-center gap-2 font-bold text-sm shadow-md animate-in slide-in-from-top-4">
           Você tem um pedido em andamento! Acompanhar <ArrowRight size={16} />
