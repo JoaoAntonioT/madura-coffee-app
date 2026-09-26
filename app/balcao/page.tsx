@@ -1246,9 +1246,12 @@ function OrderCaixaCard({ order, user, onOpenCheckout, onOpenCancel }: any) {
       ) : (
         (user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
           <div className="flex gap-2 mt-2">
-            <button onClick={() => onOpenCheckout(order)} className="flex-1 bg-green text-white py-2 rounded-lg text-sm font-bold hover:bg-green transition flex justify-center items-center gap-2">
-              <DollarSign size={16} /> Receber
-            </button>
+            <button
+  onClick={() => onOpenCheckout(order)}
+  className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2"
+>
+  <DollarSign size={16} /> Receber
+</button>
             <button onClick={() => onOpenCancel(order)} className="bg-red-50 text-red px-3 py-2 rounded-lg text-sm font-bold hover:bg-red transition border border-red-200 flex justify-center items-center" title="Cancelar Pedido">
               <Ban size={16} />
             </button>
