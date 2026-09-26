@@ -16,6 +16,7 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
 
   const [order, setOrder] = useState<any>(null)
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card' | 'manual'>('pix')
+  const [paymentSettings, setPaymentSettings] = useState({ pix: true, credit_card: true, counter: true })
   
   const [pixData, setPixData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null)
   const [loadingPix, setLoadingPix] = useState(false)
@@ -24,6 +25,17 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   const [queuePosition, setQueuePosition] = useState<number | null>(null)
 
   const fetchOrder = async () => {
+    // 0. Fetch Settings First
+    const { data: settings } = await supabase.from('settings').select('value').eq('id', 'payment_methods').single()
+    if (settings) {
+      setPaymentSettings(settings.value)
+      // Ajusta o método default caso o pix esteja desativado
+      if (!settings.value.pix) {
+        if (settings.value.credit_card) setPaymentMethod('card')
+        else if (settings.value.counter) setPaymentMethod('manual')
+      }
+    }
+
     const { data: orderData } = await supabase
       .from('orders')
       .select('*, order_items(*)')
@@ -265,30 +277,30 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
 
           {/* Abas com as 3 opções */}
           <div className="flex gap-1 w-full mb-6 p-1 bg-gray-100 rounded-xl overflow-x-auto text-sm">
+            {paymentSettings.pix && (
             <button 
               onClick={() => setPaymentMethod('pix')}
-              className={`flex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 ${
-                paymentMethod === 'pix' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={lex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 }
             >
               <QrCode size={16} /> PIX
             </button>
+)}
+            {paymentSettings.credit_card && (
             <button 
               onClick={() => setPaymentMethod('card')}
-              className={`flex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 ${
-                paymentMethod === 'card' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={lex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 }
             >
               <CreditCard size={16} /> Cartão Online
             </button>
+)}
+            {paymentSettings.counter && (
             <button 
               onClick={() => setPaymentMethod('manual')}
-              className={`flex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 ${
-                paymentMethod === 'manual' ? 'bg-white text-amber-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={lex-1 py-3 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all duration-300 }
             >
-              <Store size={16} /> Caixa
+              <Store size={16} /> Balcão
             </button>
+)}
           </div>
 
           {/* ABA: PIX */}
