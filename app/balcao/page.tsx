@@ -87,6 +87,7 @@ export default function Balcao() {
   const [teamMembers, setTeamMembers] = useState<{id: string, name: string}[]>([])
 
   const [busca, setBusca] = useState('')
+  const [buscaProduto, setBuscaProduto] = useState('')
   const [isPending, startTransition] = useTransition()
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
@@ -686,9 +687,40 @@ export default function Balcao() {
               </div>
             </div>
 
+            <div className="relative">
+              <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-custom-gray" />
+              <input
+                type="text"
+                value={buscaProduto}
+                onChange={(e) => setBuscaProduto(e.target.value)}
+                placeholder="Buscar produto pelo nome ou descrição..."
+                className="w-full bg-white border border-custom-border/30 rounded-xl pl-10 pr-10 py-3 text-sm text-[#3E2723] font-medium placeholder:text-custom-gray shadow-sm focus:border-[#3E2723] outline-none"
+              />
+              {buscaProduto && (
+                <button type="button" onClick={() => setBuscaProduto('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-custom-gray hover:text-[#3E2723] p-1">
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
             {produtoSubTab === 'FICHAS' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {productsList.map(product => (
+                {(() => {
+                  const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                  const q = norm(buscaProduto.trim())
+                  const getScore = (p: ProductInfo) => {
+                    if (!q) return 0
+                    const n = norm(p.name)
+                    const d = norm(p.description)
+                    if (n.startsWith(q)) return 0
+                    if (n.includes(q)) return 1
+                    if (d.includes(q)) return 2
+                    return 99
+                  }
+                  return productsList
+                    .filter(p => getScore(p) < 99)
+                    .sort((a, b) => getScore(a) - getScore(b) || a.name.localeCompare(b.name))
+                })().map(product => (
                   <RecipeFormCard key={product.id} product={product} estoque={estoque} />
                 ))}
               </div>
@@ -703,8 +735,29 @@ export default function Balcao() {
                 </div>
                 
                 <div className="space-y-8">
-                  {categories.map((cat, index) => {
-                    const catProducts = productsList.filter(p => p.category_id === cat.id)
+                  {(() => {
+                    const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    const q = norm(buscaProduto.trim())
+                    const getScore = (p: ProductInfo) => {
+                      if (!q) return 0
+                      const n = norm(p.name)
+                      const d = norm(p.description)
+                      if (n.startsWith(q)) return 0
+                      if (n.includes(q)) return 1
+                      if (d.includes(q)) return 2
+                      return 99
+                    }
+                    return categories
+                      .map((cat, idx) => {
+                        const rawProds = productsList.filter(p => p.category_id === cat.id)
+                        const filteredProds = q ? rawProds.filter(p => getScore(p) < 99).sort((a, b) => getScore(a) - getScore(b) || a.name.localeCompare(b.name)) : rawProds
+                        const bestScore = filteredProds.length > 0 ? Math.min(...filteredProds.map(getScore)) : 99
+                        return { cat, idx, catProducts: filteredProds, bestScore }
+                      })
+                      .filter(item => !q || item.catProducts.length > 0)
+                      .sort((a, b) => q ? a.bestScore - b.bestScore : 0)
+                  })().map(({ cat, idx: index, catProducts }) => {
+                    // catProducts já filtrado e ordenado pela busca
                     return (
                       <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-custom-border/20 overflow-hidden">
                         <div className="bg-white px-4 py-3 border-b border-custom-border/20 flex justify-between items-center">
