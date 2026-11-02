@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download, RotateCcw, AlertTriangle, ClipboardList, Settings } from 'lucide-react'
-import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido, salvarInsumoEstoque, excluirInsumoEstoque, adicionarCategoria, editarCategoria, moverCategoria, excluirCategoria, salvarProduto, toggleProdutoDisponivel, excluirProduto, atualizarMetodosPagamento } from './actions'
+import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido, salvarInsumoEstoque, registrarEntradaEstoque, excluirInsumoEstoque, adicionarCategoria, editarCategoria, moverCategoria, excluirCategoria, salvarProduto, toggleProdutoDisponivel, excluirProduto, atualizarMetodosPagamento } from './actions'
 
 // ==========================================
 // TIPAGENS
@@ -94,6 +94,8 @@ export default function Balcao() {
   const [checkoutModalOrder, setCheckoutModalOrder] = useState<Order | null>(null)
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null)
   const [insumoModal, setInsumoModal] = useState<{id?: string, name: string, quantity: number, unit: string} | null>(null)
+  const [entradaModal, setEntradaModal] = useState<{name: string, packagesCount: number, packageSize: number, packageUnit: string, totalCost: number, purchaseDate: string} | null>(null)
+  const [entradasEstoque, setEntradasEstoque] = useState<any[]>([])
 
   // Verifica login salvo
   useEffect(() => {
@@ -165,6 +167,8 @@ export default function Balcao() {
     if (estoque.length === 0) {
       const { data: inv } = await supabase.from('inventory').select('*').order('name')
       if (inv) setEstoque(inv)
+      const { data: ent } = await supabase.from('inventory_entries').select('*').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(50)
+      if (ent) setEntradasEstoque(ent)
     }
   }, [estoque.length])
 
@@ -436,6 +440,22 @@ export default function Balcao() {
         await fetchHistorico()
       }
       setLoadingId(null)
+    })
+  }
+
+  const handleRegistrarEntrada = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!entradaModal) return
+    startTransition(async () => {
+      const res = await registrarEntradaEstoque(entradaModal)
+      if (!res.success) alert(`Erro: ${res.error}`)
+      else {
+        setEntradaModal(null)
+        const { data: inv } = await supabase.from('inventory').select('*').order('name')
+        if (inv) setEstoque(inv)
+        const { data: ent } = await supabase.from('inventory_entries').select('*').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(50)
+        if (ent) setEntradasEstoque(ent)
+      }
     })
   }
 
@@ -823,10 +843,10 @@ export default function Balcao() {
                 <h2 className="text-xl font-black text-[#3E2723]">Estoque de Insumos</h2>
               </div>
               <button 
-                onClick={() => setInsumoModal({ name: '', quantity: 0, unit: 'g' })}
+                onClick={() => setEntradaModal({ name: '', packagesCount: 1, packageSize: 1, packageUnit: 'g', totalCost: 0, purchaseDate: new Date().toISOString().split('T')[0] })}
                 className="bg-[#3E2723] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#4E342E] transition flex items-center gap-2"
               >
-                <Plus size={18} /> Novo Insumo
+                <Plus size={18} /> Adicionar Insumo
               </button>
             </div>
 
@@ -850,10 +870,10 @@ export default function Balcao() {
                     </tr>
                   ) : (
                     estoque.map(item => (
-                      <tr key={item.id} onClick={() => setInsumoModal(item)} className="border-b border-custom-border/20 border-custom-border/10 hover:bg-white transition cursor-pointer">
+                      <tr key={item.id} onClick={() => { const bQty = item.unit === 'kg' ? Number(item.quantity) * 1000 : item.unit === 'L' ? Number(item.quantity) * 1000 : Number(item.quantity); const bUnit = ['kg', 'g'].includes(item.unit) ? 'g' : ['L', 'ml'].includes(item.unit) ? 'ml' : 'un'; setInsumoModal({ ...item, quantity: bQty, unit: bUnit }); }} className="border-b border-custom-border/20 border-custom-border/10 hover:bg-amber-50/40 transition cursor-pointer" title="Clique para editar este insumo">
                         <td className="p-3 font-bold text-[#3E2723]">{item.name}</td>
-                        <td className="p-3 font-black text-xl text-[#3E2723] text-center">{item.quantity}</td>
-                        <td className="p-3 text-custom-gray">{item.unit}</td>
+                        <td className="p-3 font-black text-xl text-[#3E2723] text-center">{item.unit === 'kg' ? Number(item.quantity) * 1000 : item.unit === 'L' ? Number(item.quantity) * 1000 : item.quantity}</td>
+                        <td className="p-3 text-custom-gray font-bold">{['kg', 'g'].includes(item.unit) ? 'g' : ['L', 'ml'].includes(item.unit) ? 'ml' : 'un'}</td>
                         <td className="p-3">
                           {item.quantity <= 0 ? (
                             <span className="bg-red text-red px-2 py-1 rounded text-xs font-bold">ESGOTADO</span>
@@ -1166,6 +1186,214 @@ export default function Balcao() {
         )}
 
         {/* ========================================== */}
+        {activeTab === 'ESTOQUE' && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden mt-6">
+            <div className="flex justify-between items-center mb-4 border-b border-custom-border/20 pb-3">
+              <div className="flex items-center gap-2">
+                <History className="text-[#3E2723]" size={22} />
+                <h3 className="text-lg font-black text-[#3E2723]">Histórico de Entradas e Compras</h3>
+              </div>
+              <span className="text-xs font-bold text-amber-900 bg-amber-100 px-3 py-1 rounded-full">
+                Total registrado: R$ {entradasEstoque.reduce((acc, e) => acc + (Number(e.total_cost) || 0), 0).toFixed(2)}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-custom-border/20 text-medium-brown text-xs uppercase">
+                    <th className="p-3 font-bold">Data da Compra</th>
+                    <th className="p-3 font-bold">Insumo</th>
+                    <th className="p-3 font-bold">Compra (Embalagens)</th>
+                    <th className="p-3 font-bold text-center">Entrada Normalizada</th>
+                    <th className="p-3 font-bold text-right">Valor Gasto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entradasEstoque.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-6 text-center text-custom-gray text-sm">
+                        Nenhuma entrada de compra registrada ainda. Use o botão &quot;+ Adicionar Insumo&quot; acima.
+                      </td>
+                    </tr>
+                  ) : (
+                    entradasEstoque.map((ent) => (
+                      <tr key={ent.id} className="border-b border-custom-border/10 text-sm">
+                        <td className="p-3 text-custom-gray font-medium">
+                          {ent.purchase_date ? new Date(ent.purchase_date + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                        </td>
+                        <td className="p-3 font-bold text-[#3E2723]">{ent.ingredient_name}</td>
+                        <td className="p-3 text-medium-brown">
+                          {ent.packages_count}x de {ent.package_size} {ent.package_unit}
+                        </td>
+                        <td className="p-3 font-black text-green-700 text-center">
+                          +{ent.added_quantity_base} {ent.base_unit}
+                        </td>
+                        <td className="p-3 font-black text-[#3E2723] text-right">
+                          R$ {Number(ent.total_cost || 0).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {entradaModal && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative animate-in zoom-in-95 my-auto">
+              <button onClick={() => setEntradaModal(null)} className="absolute top-4 right-4 text-custom-gray hover:text-medium-brown"><X size={24} /></button>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-12 h-12 bg-amber-100 text-[#3E2723] rounded-full flex items-center justify-center">
+                  <Plus size={24} />
+                </div>
+                <div>
+                  <h3 className="font-black text-xl text-[#3E2723]">Adicionar Insumo (Compra)</h3>
+                  <p className="text-xs text-custom-gray">Soma ao estoque na menor medida (g, ml ou un)</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleRegistrarEntrada} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-medium-brown mb-1">Nome do Insumo (Pesquise ou crie novo)</label>
+                  <input
+                    type="text"
+                    required
+                    value={entradaModal.name}
+                    onChange={(e) => setEntradaModal({ ...entradaModal, name: e.target.value })}
+                    className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none"
+                    placeholder="Digite para buscar no estoque (Ex: Leite, Café)..."
+                  />
+                  {(() => {
+                    const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+                    const q = norm(entradaModal.name)
+                    if (!q) return null
+                    const matches = estoque.filter(item => norm(item.name).includes(q))
+                    if (matches.length === 0) return null
+                    const exactItem = matches.find(item => norm(item.name) === q)
+                    return (
+                      <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-1.5">
+                        <p className="text-xs font-bold text-amber-900">
+                          {exactItem
+                            ? `✓ Somando ao insumo existente "${exactItem.name}".`
+                            : 'Insumos já cadastrados (clique para somar a um deles):'}
+                        </p>
+                        <div className="max-h-28 overflow-y-auto space-y-1">
+                          {matches.map(item => {
+                            const bQty = item.unit === 'kg' ? Number(item.quantity) * 1000 : item.unit === 'L' ? Number(item.quantity) * 1000 : Number(item.quantity)
+                            const bUnit = ['kg', 'g'].includes(item.unit) ? 'g' : ['L', 'ml'].includes(item.unit) ? 'ml' : 'un'
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => setEntradaModal({ ...entradaModal, name: item.name, packageUnit: bUnit })}
+                                className="w-full text-left px-2.5 py-1.5 rounded bg-white hover:bg-amber-100 border border-amber-200/60 flex justify-between items-center text-xs transition"
+                              >
+                                <span className="font-bold text-[#3E2723]">{item.name}</span>
+                                <span className="font-semibold text-amber-800">Saldo: {bQty} {bUnit}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                <div className="bg-gray-50 p-3.5 rounded-xl border border-custom-border/20 space-y-3">
+                  <p className="text-xs font-black text-[#3E2723] uppercase tracking-wider">Como você comprou no mercado?</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-medium-brown mb-1">Qtd. Itens/Pacotes</label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        required
+                        value={entradaModal.packagesCount}
+                        onChange={(e) => setEntradaModal({ ...entradaModal, packagesCount: Math.max(1, parseInt(e.target.value) || 1) })}
+                        className="w-full p-2.5 border rounded-lg focus:border-[#3E2723] outline-none bg-white text-sm font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-medium-brown mb-1">Tam. por pacote</label>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        required
+                        value={entradaModal.packageSize}
+                        onChange={(e) => setEntradaModal({ ...entradaModal, packageSize: parseFloat(e.target.value) || 0 })}
+                        className="w-full p-2.5 border rounded-lg focus:border-[#3E2723] outline-none bg-white text-sm font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-medium-brown mb-1">Medida</label>
+                      <select
+                        value={entradaModal.packageUnit}
+                        onChange={(e) => setEntradaModal({ ...entradaModal, packageUnit: e.target.value })}
+                        className="w-full p-2.5 border rounded-lg focus:border-[#3E2723] outline-none bg-white text-sm font-bold"
+                      >
+                        <option value="g">g (gramas)</option>
+                        <option value="kg">kg (quilos)</option>
+                        <option value="ml">ml (mililitros)</option>
+                        <option value="L">L (litros)</option>
+                        <option value="un">un (unidades)</option>
+                      </select>
+                    </div>
+                  </div>
+                  {(() => {
+                    const raw = (Number(entradaModal.packagesCount) || 0) * (Number(entradaModal.packageSize) || 0)
+                    const bQty = ['kg', 'L'].includes(entradaModal.packageUnit) ? raw * 1000 : raw
+                    const bUnit = ['kg', 'g'].includes(entradaModal.packageUnit) ? 'g' : ['L', 'ml'].includes(entradaModal.packageUnit) ? 'ml' : 'un'
+                    return (
+                      <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex justify-between items-center text-xs">
+                        <span className="font-bold text-green-900">Entrada normalizada no estoque:</span>
+                        <span className="font-black text-sm text-green-700">+{bQty} {bUnit}</span>
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-bold text-medium-brown mb-1">Data da Compra</label>
+                    <input
+                      type="date"
+                      required
+                      value={entradaModal.purchaseDate}
+                      onChange={(e) => setEntradaModal({ ...entradaModal, purchaseDate: e.target.value })}
+                      className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-medium-brown mb-1">Valor Total Gasto (R$)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      value={entradaModal.totalCost}
+                      onChange={(e) => setEntradaModal({ ...entradaModal, totalCost: parseFloat(e.target.value) || 0 })}
+                      className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none text-sm font-bold"
+                      placeholder="Ex: 60.00"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="w-full bg-[#3E2723] text-white font-black py-3.5 rounded-lg hover:bg-[#4E342E] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isPending ? <Loader2 size={18} className="animate-spin" /> : 'Confirmar Entrada no Estoque'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* MODAL 4: INSUMO (ESTOQUE)                    */}
         {/* ========================================== */}
         {insumoModal && (
@@ -1178,7 +1406,7 @@ export default function Balcao() {
                   <ClipboardList size={24} />
                 </div>
                 <div>
-                  <h3 className="font-black text-xl text-[#3E2723]">{insumoModal.id ? 'Editar Insumo' : 'Novo Insumo'}</h3>
+                  <h3 className="font-black text-xl text-[#3E2723]">Editar Insumo (Ajuste Manual)</h3>
                 </div>
               </div>
 
@@ -1207,13 +1435,20 @@ export default function Balcao() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-medium-brown mb-1">Unidade</label>
+                    <label className="block text-sm font-bold text-medium-brown mb-1">Unidade Base</label>
                     <select 
                       value={insumoModal.unit}
                       onChange={(e) => setInsumoModal({...insumoModal, unit: e.target.value})}
                       className="w-full p-3 border-2 border-custom-border/20 rounded-lg focus:border-[#3E2723] outline-none bg-white"
                     >
                       <option value="g">g (gramas)</option>
+                      <option value="kg">kg (quilogramas)</option>
+                      <option value="ml">ml (mililitros)</option>
+                      <option value="L">L (litros)</option>
+                      <option value="un">un (unidades)</option>
+                      <option value="dose">dose (doses)</option>
+                      <option value="pct">pct (pacotes)</option>
+                      <option value="cx">cx (caixas)</option>
                       <option value="ml">ml (mililitros)</option>
                       <option value="un">un (unidades)</option>
                     </select>
@@ -1411,6 +1646,8 @@ function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: a
   const [loading, setLoading] = useState(false)
 
   const handleSave = async () => {
+    if (ingredients.some(i => !i.name || !estoque.some(e => e.name === i.name))) { alert('Selecione apenas insumos cadastrados no estoque!'); return; }
+    if (ingredients.some(i => !i.quantity || i.quantity <= 0)) { alert('Informe uma quantidade maior que zero para cada insumo!'); return; }
     setLoading(true)
     const res = await atualizarReceitaProduto(product.id, instructions, ingredients)
     setLoading(false)
@@ -1450,7 +1687,7 @@ function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: a
                   )}
                 </select>
                 <input type="number" placeholder="Qtd" value={ing.quantity} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].quantity = Number(e.target.value); setIngredients(newIng) }} className="w-16 border rounded p-2 text-sm outline-none focus:border-[#3E2723]" />
-                <span className="w-10 text-center text-sm font-bold text-custom-gray pt-2">{ing.unit}</span>
+                <select value={ing.unit} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].unit = e.target.value; setIngredients(newIng) }} className="w-20 border rounded p-2 text-sm font-bold text-[#3E2723] outline-none focus:border-[#3E2723] bg-white">{['g', 'kg'].includes(ing.unit) ? (<><option value="g">g</option><option value="kg">kg</option></>) : ['ml', 'L'].includes(ing.unit) ? (<><option value="ml">ml</option><option value="L">L</option></>) : (<option value={ing.unit}>{ing.unit}</option>)}</select>
                 <button type="button" onClick={() => setIngredients(ingredients.filter((_, i) => i !== idx))} className="text-red p-2 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
               </div>
             ))}

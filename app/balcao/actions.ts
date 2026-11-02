@@ -64,10 +64,10 @@ export async function processarBaixaEstoque(orderId: string) {
           
           // Chama uma function no banco (RPC) para fazer a subtração atômica.
           // O usuário precisa criar a table 'inventory' e a function 'decrement_inventory'
-          await supabase.rpc('decrement_inventory', {
+          const { data: invItem } = await supabase.from('inventory').select('id, quantity, unit').eq('name', ingredient.name).single(); if (invItem) { let factor = 1; if (ingredient.unit === 'g' && invItem.unit === 'kg') factor = 0.001; else if (ingredient.unit === 'kg' && invItem.unit === 'g') factor = 1000; else if (ingredient.unit === 'ml' && invItem.unit === 'L') factor = 0.001; else if (ingredient.unit === 'L' && invItem.unit === 'ml') factor = 1000; const newQty = Number((Number(invItem.quantity) - totalToSubtract * factor).toFixed(4)); await supabase.from('inventory').update({ quantity: newQty }).eq('id', invItem.id); } else { await supabase.rpc('decrement_inventory', {
             ing_name: ingredient.name,
             amount: totalToSubtract
-          })
+          }) }
         }
       }
     }
@@ -91,13 +91,68 @@ export async function marcarPronto(orderId: string) {
   return { success: true }
 }
 
+function normalizarParaMenorUnidade(qty: number, unit: string): { baseQty: number; baseUnit: 'g' | 'ml' | 'un' } {
+  if (unit === 'kg') return { baseQty: Number((qty * 1000).toFixed(2)), baseUnit: 'g' }
+  if (unit === 'g') return { baseQty: Number(qty.toFixed(2)), baseUnit: 'g' }
+  if (unit === 'L') return { baseQty: Number((qty * 1000).toFixed(2)), baseUnit: 'ml' }
+  if (unit === 'ml') return { baseQty: Number(qty.toFixed(2)), baseUnit: 'ml' }
+  return { baseQty: Number(qty.toFixed(2)), baseUnit: 'un' }
+}
+
+export async function registrarEntradaEstoque(params: { name: string; packagesCount: number; packageSize: number; packageUnit: string; totalCost: number; purchaseDate: string }) {
+  try {
+    const cleanName = params.name.trim()
+    if (!cleanName) throw new Error('Informe o nome do insumo.')
+    const rawAdded = Number(params.packagesCount) * Number(params.packageSize)
+    if (rawAdded <= 0) throw new Error('A quantidade adicionada deve ser maior que zero.')
+    const { baseQty: addedQty, baseUnit } = normalizarParaMenorUnidade(rawAdded, params.packageUnit)
+
+    const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+    const { data: existingList } = await supabase.from('inventory').select('*')
+    const existingItem = existingList?.find(i => norm(i.name) === norm(cleanName))
+
+    let inventoryId: string
+    if (existingItem) {
+      const currentNormalized = normalizarParaMenorUnidade(Number(existingItem.quantity) || 0, existingItem.unit)
+      const newTotal = Number((currentNormalized.baseQty + addedQty).toFixed(2))
+      const { error: upErr } = await supabase.from('inventory').update({ quantity: newTotal, unit: baseUnit, last_cost: params.totalCost, updated_at: new Date().toISOString() }).eq('id', existingItem.id)
+      if (upErr) throw upErr
+      inventoryId = existingItem.id
+    } else {
+      const { data: created, error: insErr } = await supabase.from('inventory').insert([{ name: cleanName, quantity: addedQty, unit: baseUnit, last_cost: params.totalCost, updated_at: new Date().toISOString() }]).select('id').single()
+      if (insErr) throw insErr
+      inventoryId = created.id
+    }
+
+    const { error: entryErr } = await supabase.from('inventory_entries').insert([{
+      inventory_id: inventoryId,
+      ingredient_name: existingItem ? existingItem.name : cleanName,
+      packages_count: params.packagesCount,
+      package_size: params.packageSize,
+      package_unit: params.packageUnit,
+      added_quantity_base: addedQty,
+      base_unit: baseUnit,
+      total_cost: params.totalCost,
+      purchase_date: params.purchaseDate
+    }])
+    if (entryErr) console.error('Aviso ao salvar histórico de entrada:', entryErr)
+
+    revalidatePath('/balcao')
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
 export async function salvarInsumoEstoque(id: string | null, name: string, quantity: number, unit: string) {
+  const normalized = normalizarParaMenorUnidade(Number(quantity) || 0, unit); quantity = normalized.baseQty; unit = normalized.baseUnit;
   try {
     if (id) {
       const { error } = await supabase.from('inventory').update({ name, quantity, unit }).eq('id', id)
       if (error) throw error
     } else {
-      const { error } = await supabase.from('inventory').insert([{ name, quantity, unit }])
+      const { data: existingList } = await supabase.from('inventory').select('name'); const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); if (existingList?.some(i => norm(i.name) === norm(name))) throw new Error('Já existe um insumo cadastrado com este nome.');
+      const { error } = await supabase.from('inventory').insert([{ name: name.trim(), quantity, unit }])
       if (error) {
         if (error.code === '23505') throw new Error('Já existe um insumo com este nome.')
         throw error
