@@ -94,6 +94,7 @@ export default function Balcao() {
   // Modais
   const [checkoutModalOrder, setCheckoutModalOrder] = useState<Order | null>(null)
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null)
+  const [receitaModalOrder, setReceitaModalOrder] = useState<Order | null>(null)
   const [insumoModal, setInsumoModal] = useState<{id?: string, name: string, quantity: number, unit: string} | null>(null)
   const [entradaModal, setEntradaModal] = useState<{name: string, packagesCount: number, packageSize: number, packageUnit: string, totalCost: number, purchaseDate: string} | null>(null)
   const [entradasEstoque, setEntradasEstoque] = useState<any[]>([])
@@ -183,6 +184,11 @@ export default function Balcao() {
     if (teamMembers.length === 0) {
       supabase.from('team').select('id, name').then(({ data }) => {
         if (data) setTeamMembers(data)
+      })
+    }
+    if (productsList.length === 0) {
+      supabase.from('products').select('*').order('name').then(({ data }) => {
+        if (data) setProductsList(data)
       })
     }
 
@@ -628,7 +634,7 @@ export default function Balcao() {
                 <Coffee className="text-[#3E2723]" /> Fila de Preparo ({pedidosEmPreparo.length})
               </h2>
               {pedidosEmPreparo.map(order => (
-                <OrderPreparoCard key={order.id} order={order} user={user} isPending={isPending} loadingId={loadingId} onAssumir={handleAssumir} onPronto={handleMarcarPronto} />
+                <OrderPreparoCard key={order.id} order={order} user={user} isPending={isPending} loadingId={loadingId} onAssumir={handleAssumir} onPronto={handleMarcarPronto} onOpenReceita={setReceitaModalOrder} />
               ))}
               {pedidosEmPreparo.length === 0 && <p className="text-custom-gray text-sm italic">Nenhum pedido na fila.</p>}
             </div>
@@ -658,7 +664,7 @@ export default function Balcao() {
         {activeTab === 'PREPARO' && (
           <div className="space-y-4 max-w-3xl mx-auto">
             {pedidosEmPreparo.map(order => (
-               <OrderPreparoCard key={order.id} order={order} user={user} isPending={isPending} loadingId={loadingId} onAssumir={handleAssumir} onPronto={handleMarcarPronto} />
+               <OrderPreparoCard key={order.id} order={order} user={user} isPending={isPending} loadingId={loadingId} onAssumir={handleAssumir} onPronto={handleMarcarPronto} onOpenReceita={setReceitaModalOrder} />
             ))}
           </div>
         )}
@@ -1052,6 +1058,90 @@ export default function Balcao() {
         )}
 
         {/* ========================================== */}
+        {receitaModalOrder && (() => {
+          const activeOrder = orders.find(o => o.id === receitaModalOrder.id) || receitaModalOrder
+          return (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+              <div className="bg-white w-full max-w-lg rounded-2xl p-5 sm:p-6 shadow-xl relative animate-in zoom-in-95 my-auto max-h-[90vh] flex flex-col">
+                <button onClick={() => setReceitaModalOrder(null)} className="absolute top-4 right-4 text-custom-gray hover:text-medium-brown cursor-pointer"><X size={24} /></button>
+
+                <div className="border-b border-custom-border/20 pb-3 mb-4 pr-8">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="font-black text-2xl text-[#3E2723]">Pedido #{activeOrder.short_id}</h3>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                      activeOrder.status === 'IN_PRODUCTION' ? 'bg-blue-100 text-blue-800' :
+                      activeOrder.status === 'READY' ? 'bg-green-100 text-green-800' :
+                      'bg-amber-100 text-amber-900'
+                    }`}>
+                      {activeOrder.status === 'IN_PRODUCTION' ? 'Em Produção' : activeOrder.status === 'READY' ? 'Pronto' : 'Na Fila (Pago)'}
+                    </span>
+                  </div>
+                  <p className="text-medium-brown font-bold text-sm mt-1">Cliente: {activeOrder.customer_name}</p>
+                </div>
+
+                <div className="overflow-y-auto flex-1 space-y-4 pr-1">
+                  {activeOrder.order_items?.map((item: any) => {
+                    const prod = productsList.find(p => p.id === item.product_id || p.name === item.product_name)
+                    return (
+                      <div key={item.id} className="bg-gray-50 p-4 rounded-xl border border-custom-border/20 space-y-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <h4 className="font-black text-base text-[#3E2723]">
+                            <span className="text-amber-700">{item.quantity}x</span> {item.product_name}
+                          </h4>
+                        </div>
+
+                        {item.observation && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs font-bold text-amber-900">
+                            📝 Observação do cliente: {item.observation}
+                          </div>
+                        )}
+
+                        <div className="bg-white p-3 rounded-lg border border-custom-border/15 space-y-1">
+                          <p className="text-xs font-black text-[#3E2723] uppercase tracking-wider">Modo de Preparo (Receita)</p>
+                          <p className="text-sm text-medium-brown whitespace-pre-line leading-relaxed">
+                            {prod?.recipe_instructions || 'Nenhuma instrução de preparo cadastrada para este produto.'}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className="border-t border-custom-border/20 pt-4 mt-4 flex flex-col sm:flex-row gap-2">
+                  {(user.role === 'ADMIN' || user.role === 'BARISTA') && (
+                    activeOrder.status === 'PAID' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleAssumir(activeOrder.id)}
+                        disabled={isPending && loadingId === activeOrder.id}
+                        className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {isPending && loadingId === activeOrder.id ? <Loader2 size={16} className="animate-spin" /> : 'Assumir Pedido (Iniciar Preparo)'}
+                      </button>
+                    ) : activeOrder.status === 'IN_PRODUCTION' ? (
+                      <button
+                        type="button"
+                        onClick={() => { handleMarcarPronto(activeOrder.id); setReceitaModalOrder(null) }}
+                        disabled={(isPending && loadingId === activeOrder.id) || (activeOrder.assigned_to && activeOrder.assigned_to !== user.id)}
+                        className="flex-1 bg-[#3E2723] text-white py-3 px-4 rounded-xl text-sm font-bold hover:bg-[#4E342E] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {isPending && loadingId === activeOrder.id ? <Loader2 size={16} className="animate-spin" /> : <><Coffee size={16} /> Marcar como Pronto</>}
+                      </button>
+                    ) : null
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setReceitaModalOrder(null); setCancelModalOrder(activeOrder) }}
+                    className="bg-red-50 text-red-600 border border-red-200 py-3 px-4 rounded-xl text-sm font-bold hover:bg-red-100 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Ban size={16} /> Cancelar Pedido
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* MODAL 3: DETALHES DO PEDIDO (HISTÓRICO)      */}
         {/* ========================================== */}
         {detailModalOrder && (
@@ -1633,7 +1723,7 @@ function OrderCaixaCard({ order, user, onOpenCheckout, onOpenCancel }: any) {
   )
 }
 
-function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPronto }: any) {
+function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPronto, onOpenReceita }: any) {
   return (
     <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-[#3E2723] flex flex-col sm:flex-row justify-between gap-4 relative">
       <div className="absolute top-2 right-4 flex items-center gap-1 text-custom-gray text-xs font-bold">
@@ -1648,7 +1738,7 @@ function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPron
         <ul className="bg-white p-3 rounded-lg border border-custom-border/10 space-y-1">
           {order.order_items?.map((item: any) => (
             <li key={item.id} className="text-sm font-bold text-medium-brown flex gap-2">
-              <div><span className="text-yellow">{item.quantity}x</span> {item.product_name}{item.observation && <span className="block text-xs font-semibold text-amber-900 bg-amber-50 border border-amber-200 px-2 py-1 rounded mt-1 w-fit">Obs: {item.observation}</span>}</div>
+              <div className="w-full flex items-start justify-between gap-2"><div><span className="text-yellow">{item.quantity}x</span> {item.product_name}{item.observation && <span className="block text-xs font-semibold text-amber-900 bg-amber-50 border border-amber-200 px-2 py-1 rounded mt-1 w-fit">Obs: {item.observation}</span>}</div><button type="button" onClick={() => onOpenReceita && onOpenReceita(order)} className="shrink-0 text-xs font-bold bg-amber-100 text-[#3E2723] hover:bg-amber-200 px-2.5 py-1 rounded-lg transition cursor-pointer">Ver Receita</button></div>
             </li>
           ))}
         </ul>
