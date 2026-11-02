@@ -36,7 +36,11 @@ type Ingredient = { name: string, quantity: number, unit: string }
 
 type ProductInfo = {
   id: string
+  category_id: string
   name: string
+  description: string
+  price: number
+  is_available: boolean
   recipe_instructions: string | null
   recipe_ingredients: Ingredient[] | null
 }
