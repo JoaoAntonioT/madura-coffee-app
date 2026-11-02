@@ -128,12 +128,26 @@ export default function Menu() {
           .map((cat) => {
             const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             const q = norm(searchQuery.trim())
-            const filteredProducts = q
-              ? cat.products.filter(p => norm(p.name).includes(q) || norm(p.description).includes(q) || norm(cat.name).includes(q))
-              : cat.products
-            return { ...cat, products: filteredProducts }
+            if (!q) return { ...cat, products: cat.products, bestScore: 0 }
+
+            const getScore = (p: Product) => {
+              const nameNorm = norm(p.name)
+              const descNorm = norm(p.description)
+              if (nameNorm.startsWith(q)) return 0
+              if (nameNorm.includes(q)) return 1
+              if (descNorm.includes(q)) return 2
+              return 99
+            }
+
+            const filteredProducts = cat.products
+              .filter(p => getScore(p) < 99)
+              .sort((a, b) => getScore(a) - getScore(b) || a.name.localeCompare(b.name))
+
+            const bestScore = filteredProducts.length > 0 ? Math.min(...filteredProducts.map(getScore)) : 99
+            return { ...cat, products: filteredProducts, bestScore }
           })
           .filter(cat => cat.products.length > 0)
+          .sort((a, b) => a.bestScore - b.bestScore)
           .map((category) => (
             <section key={category.id}>
               <h2 className="text-2xl font-black text-[#3E2723] mb-4 border-b border-custom-border/20-2 border-[#3E2723] pb-2">
