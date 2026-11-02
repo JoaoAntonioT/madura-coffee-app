@@ -1062,7 +1062,7 @@ export default function Balcao() {
           const activeOrder = orders.find(o => o.id === receitaModalOrder.id) || receitaModalOrder
           return (
             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-              <div className="bg-white w-full max-w-lg rounded-2xl p-5 sm:p-6 shadow-xl relative animate-in zoom-in-95 my-auto max-h-[90vh] flex flex-col">
+              <div className="bg-white w-full max-w-lg md:max-w-4xl lg:max-w-6xl rounded-2xl p-4 sm:p-6 shadow-xl relative animate-in zoom-in-95 my-auto max-h-[92vh] flex flex-col">
                 <button onClick={() => setReceitaModalOrder(null)} className="absolute top-4 right-4 text-custom-gray hover:text-medium-brown cursor-pointer"><X size={24} /></button>
 
                 <div className="border-b border-custom-border/20 pb-3 mb-4 pr-8">
@@ -1079,7 +1079,7 @@ export default function Balcao() {
                   <p className="text-medium-brown font-bold text-sm mt-1">Cliente: {activeOrder.customer_name}</p>
                 </div>
 
-                <div className="overflow-y-auto flex-1 space-y-4 pr-1">
+                <div className={`overflow-y-auto flex-1 pr-1 grid grid-cols-1 gap-4 items-start ${(activeOrder.order_items?.length || 0) >= 3 ? 'md:grid-cols-2 lg:grid-cols-3' : (activeOrder.order_items?.length || 0) === 2 ? 'md:grid-cols-2' : ''}`}>
                   {activeOrder.order_items?.map((item: any) => {
                     const prod = productsList.find(p => p.id === item.product_id || p.name === item.product_name)
                     return (
@@ -1097,7 +1097,7 @@ export default function Balcao() {
                         )}
 
                         <div className="bg-white p-3 rounded-lg border border-custom-border/15 space-y-1">
-                          <p className="text-xs font-black text-[#3E2723] uppercase tracking-wider">Modo de Preparo (Receita)</p>
+                          <p className="text-xs font-black text-[#3E2723] uppercase tracking-wider">Modo de Preparo (Para 1 porção)</p>
                           <p className="text-sm text-medium-brown whitespace-pre-line leading-relaxed">
                             {prod?.recipe_instructions || 'Nenhuma instrução de preparo cadastrada para este produto.'}
                           </p>
@@ -1841,7 +1841,7 @@ function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: a
           </div>
         </div>
         <div>
-          <label className="block text-sm font-bold text-medium-brown mb-2">Modo de Preparo (Instruções)</label>
+          <label className="block text-sm font-bold text-medium-brown mb-2">Modo de Preparo (Instruções para 1 porção)</label>
           <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Passo a passo para o barista..." className="w-full border-2 border-custom-border/10 rounded-lg p-3 text-sm focus:border-[#3E2723] outline-none resize-none bg-white" rows={3} />
         </div>
       </div>
