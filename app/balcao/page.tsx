@@ -34,6 +34,12 @@ type Order = {
 
 type Ingredient = { name: string, quantity: number, unit: string }
 
+type CategoryInfo = {
+  id: string
+  name: string
+  sort_order: number
+}
+
 type ProductInfo = {
   id: string
   category_id: string
@@ -64,7 +70,7 @@ export default function Balcao() {
   const [paymentSettings, setPaymentSettings] = useState({ pix: true, credit_card: true, counter: true })
   const [orders, setOrders] = useState<Order[]>([])
   const [productsList, setProductsList] = useState<ProductInfo[]>([])
-  const [categories, setCategories] = useState<any[]>([])
+  const [categories, setCategories] = useState<CategoryInfo[]>([])
   const [estoque, setEstoque] = useState<{id: string, name: string, quantity: number, unit: string}[]>([])
   
   const [produtoSubTab, setProdutoSubTab] = useState<'CARDAPIO' | 'FICHAS'>('CARDAPIO')
@@ -948,7 +954,7 @@ export default function Balcao() {
         {cancelModalOrder && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl text-center animate-in zoom-in-95">
-              <div className="w-16 h-16 bg-red text-red rounded-full flex items-center justify-center mx-auto mb-4"><Ban size={32} /></div>
+              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><Ban size={32} /></div>
               <h3 className="font-black text-xl text-[#3E2723] mb-2">Cancelar Pedido #{cancelModalOrder.short_id}?</h3>
               <p className="text-sm text-custom-gray mb-6">O pedido de {cancelModalOrder.customer_name} será arquivado e não aparecerá mais na fila.</p>
               
@@ -957,7 +963,7 @@ export default function Balcao() {
                 <button 
                   onClick={() => handleConfirmarCancelamento(cancelModalOrder.id)}
                   disabled={isPending && loadingId === cancelModalOrder.id}
-                  className="py-3 font-bold text-white bg-red rounded-lg hover:bg-red flex justify-center items-center gap-2 disabled:opacity-50"
+                  className="py-3 font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 flex justify-center items-center gap-2 disabled:opacity-50"
                 >
                   {isPending && loadingId === cancelModalOrder.id ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar Exclusão'}
                 </button>
@@ -1309,16 +1315,13 @@ function OrderCaixaCard({ order, user, onOpenCheckout, onOpenCancel }: any) {
       ) : (
         (user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
           <div className="flex gap-2 mt-2">
-                          <button
-                              onClick={() => onOpenCheckout(order)}
-                              className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2"
-                          >
-                              <DollarSign size={16} /> Receber
-                          </button>
-                          <button onClick={() => onOpenCancel(order)} className="bg-red-50 text-red px-3 py-2 rounded-lg text-sm font-bold hover:bg-red transition border border-red-200 flex justify-center items-center" title="Cancelar Pedido">
-                              <Ban size={16} />
-                          </button>
-            <button onClick={() => onOpenCancel(order)} className="bg-red-50 text-red px-3 py-2 rounded-lg text-sm font-bold hover:bg-red transition border border-red-200 flex justify-center items-center" title="Cancelar Pedido">
+            <button
+              onClick={() => onOpenCheckout(order)}
+              className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2"
+            >
+              <DollarSign size={16} /> Receber
+            </button>
+            <button onClick={() => onOpenCancel(order)} className="bg-red-50 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition border border-red-200 flex justify-center items-center" title="Cancelar Pedido">
               <Ban size={16} />
             </button>
           </div>
@@ -1372,32 +1375,21 @@ function OrderRetiradaCard({ order, isPending, loadingId, onEntregar }: any) {
         <Clock size={12} /> {formatTime(order.created_at)}
       </div>
       <div className="mt-2">
-        <h3 className="font-black text-xl text-green">#{order.short_id}</h3>
+        <h3 className="font-black text-xl text-green-600">#{order.short_id}</h3>
         <p className="text-medium-brown font-medium text-sm">{order.customer_name}</p>
       </div>
 
       <button
-  onClick={() => onEntregar(order.id)}
-  disabled={isPending && loadingId === order.id}
-  className="mt-2 bg-green-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2 disabled:opacity-50"
->
-  {isPending && loadingId === order.id
-    ? <Loader2 size={16} className="animate-spin" />
-    : <Check size={16} />
-  }
-  Entregar Pedido
-</button>
-      <button
-  onClick={() => onEntregar(order.id)}
-  disabled={isPending && loadingId === order.id}
-  className="mt-2 bg-green-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2 disabled:opacity-50"
->
-  {isPending && loadingId === order.id
-    ? <Loader2 size={16} className="animate-spin" />
-    : <Check size={16} />
-  }
-  Entregar Pedido
-</button>
+        onClick={() => onEntregar(order.id)}
+        disabled={isPending && loadingId === order.id}
+        className="mt-2 bg-green-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2 disabled:opacity-50"
+      >
+        {isPending && loadingId === order.id
+          ? <Loader2 size={16} className="animate-spin" />
+          : <Check size={16} />
+        }
+        Entregar Pedido
+      </button>
     </div>
   )
 }
