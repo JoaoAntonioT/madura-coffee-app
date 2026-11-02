@@ -36,7 +36,7 @@ export default function Menu() {
     // 1. Verifica se o cliente tem um pedido em andamento salvo no celular
     const token = localStorage.getItem('active_order_token')
     if (token) {
-      setActiveToken(token)
+      supabase.from('orders').select('status').eq('token', token).single().then(({ data }) => { if (data && !['DELIVERED', 'CANCELLED', 'REFUNDED', 'EXPIRED'].includes(data.status)) { setActiveToken(token) } else { localStorage.removeItem('active_order_token'); setActiveToken(null) } })
     }
 
     async function fetchMenu() {

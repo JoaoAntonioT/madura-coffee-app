@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import { Copy, Check, QrCode, CreditCard, Store } from 'lucide-react'
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react'
@@ -13,6 +14,7 @@ if (mpPublicKey) {
 
 export default function OrderStatus({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
+  const router = useRouter()
 
   const [order, setOrder] = useState<any>(null)
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card' | 'manual'>('pix')
@@ -82,7 +84,7 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     let interval: NodeJS.Timeout
     
     // O relógio atualiza a tela a cada 5s se estiver no PIX ou no Caixa (aguardando o barista)
-    if (paymentMethod === 'pix' || paymentMethod === 'manual') {
+    if (true) {
       interval = setInterval(() => {
         fetchOrder()
       }, 5000)
@@ -113,6 +115,7 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   }, [order?.status, order?.created_at]) 
 
   useEffect(() => {
+    if (order?.status === 'DELIVERED') { if (typeof window !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(0); localStorage.removeItem('active_order_token'); window.location.href = '/'; return; }
     if (order?.status !== 'READY') return
 
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -210,21 +213,30 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     )
   }
 
+  if (order.status === 'DELIVERED') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <p className="text-custom-gray animate-pulse">Pedido entregue! Voltando ao cardápio...</p>
+      </div>
+    )
+  }
+
   if (order.status === 'READY') {
     const handleFechar = () => {
       if (typeof window !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate(0)
       }
       localStorage.removeItem('active_order_token')
-      window.location.href = '/'
+      router.replace('/')
+      window.location.replace('/')
     }
 
     return (
-      <div className="fixed inset-0 z-50 bg-green-100 text-white flex flex-col items-center justify-center p-6 animate-in zoom-in duration-300">
+      <div className="fixed inset-0 z-50 bg-green-700 text-white flex flex-col items-center justify-center p-6 animate-in zoom-in duration-300">
         <button
           type="button"
           onClick={handleFechar}
-          className="absolute top-4 right-4 text-white/80 hover:text-white text-sm font-bold border border-white/30 rounded-full px-3 py-1"
+          className="absolute top-4 right-4 z-10 cursor-pointer text-white/90 hover:text-white text-sm font-bold border border-white/40 rounded-full px-4 py-1.5"
         >
           Fechar
         </button>
@@ -233,14 +245,14 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
         <h1 className="text-4xl md:text-5xl font-black text-center mb-2 leading-tight">
           SEU CAFÉ <br />ESTÁ PRONTO!
         </h1>
-        <p className="text-green-600 text-lg mb-8 text-center">Vá até o balcão de retirada e mostre este número:</p>
+        <p className="text-green-100 text-lg mb-8 text-center">Vá até o balcão de retirada e mostre este número:</p>
 
-        <div className="bg-white text-green-600 text-6xl font-black py-4 px-12 rounded-2xl shadow-2xl mb-12">
+        <div className="bg-white text-green-700 text-6xl font-black py-4 px-12 rounded-2xl shadow-2xl mb-12">
           #{order.short_id}
         </div>
 
         <p className="font-bold text-center mb-2">Itens do pedido:</p>
-        <ul className="text-green-600 mb-8 max-w-sm w-full space-y-1">
+        <ul className="text-green-100 mb-8 max-w-sm w-full space-y-1">
           {order.order_items?.map((item: any) => (
             <li key={item.id} className="flex justify-between border-b border-custom-border/20 border-green-500 pb-1">
               <span>{item.quantity}x {item.product_name}</span>
@@ -254,7 +266,8 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-start p-4 pt-8 pb-24">
       
-      <div className="bg-white p-6 rounded-2xl shadow-sm text-center max-w-md w-full border-t  border-amber-900 mb-4">
+      <div className="bg-white p-6 rounded-2xl shadow-sm text-center max-w-md w-full border-t border-amber-900 mb-4 relative">
+        <button type="button" onClick={() => { router.replace('/'); window.location.replace('/') }} className="absolute top-4 right-4 text-custom-gray hover:text-amber-900 text-xs font-bold border border-gray-200 rounded-full px-3 py-1 cursor-pointer">Fechar</button>
         <h1 className="text-sm font-bold text-custom-gray uppercase tracking-widest mb-1">Pedido #{order.short_id}</h1>
         <h2 className="text-xl font-black text-amber-900 mb-2">Olá, {order.customer_name}!</h2>
         
@@ -264,7 +277,7 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
           </div>
         )}
         {order.status === 'PAID' && (
-          <div className="bg-green-100-50 text-green-600 font-bold p-3 rounded-lg flex items-center justify-center gap-2">
+          <div className="bg-green-100 text-green-700 font-bold p-3 rounded-lg flex items-center justify-center gap-2">
             <Check size={20} /> Pagamento Aprovado!
           </div>
         )}

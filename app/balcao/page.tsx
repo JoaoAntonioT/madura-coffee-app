@@ -18,6 +18,7 @@ type OrderItem = {
   id: string
   product_name: string
   quantity: number
+  observation?: string | null
 }
 
 type Order = {
@@ -916,8 +917,13 @@ export default function Balcao() {
                 <p className="text-xs font-bold text-custom-gray uppercase">Conferência dos Itens</p>
                 <ul className="space-y-1">
                   {checkoutModalOrder.order_items?.map((item: any) => (
-                    <li key={item.id} className="text-sm font-bold text-medium-brown flex justify-between">
-                      <span><span className="text-yellow">{item.quantity}x</span> {item.product_name}</span>
+                    <li key={item.id} className="text-sm font-bold text-medium-brown flex flex-col">
+                      <div className="flex justify-between">
+                        <span><span className="text-yellow">{item.quantity}x</span> {item.product_name}</span>
+                      </div>
+                      {item.observation && (
+                        <span className="text-xs font-normal text-amber-800 italic ml-4">Obs: {item.observation}</span>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -1023,8 +1029,13 @@ export default function Balcao() {
                   <p className="text-xs font-bold text-custom-gray mb-2">Itens</p>
                   <ul className="space-y-1">
                     {detailModalOrder.order_items?.map((item: any) => (
-                      <li key={item.id} className="text-sm font-bold text-medium-brown flex justify-between">
-                        <span><span className="text-yellow">{item.quantity}x</span> {item.product_name}</span>
+                      <li key={item.id} className="text-sm font-bold text-medium-brown flex flex-col">
+                        <div className="flex justify-between">
+                          <span><span className="text-yellow">{item.quantity}x</span> {item.product_name}</span>
+                        </div>
+                        {item.observation && (
+                          <span className="text-xs font-normal text-amber-800 italic ml-4">Obs: {item.observation}</span>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -1346,7 +1357,7 @@ function OrderPreparoCard({ order, user, isPending, loadingId, onAssumir, onPron
         <ul className="bg-white p-3 rounded-lg border border-custom-border/10 space-y-1">
           {order.order_items?.map((item: any) => (
             <li key={item.id} className="text-sm font-bold text-medium-brown flex gap-2">
-              <span className="text-yellow">{item.quantity}x</span> {item.product_name}
+              <div><span className="text-yellow">{item.quantity}x</span> {item.product_name}{item.observation && <span className="block text-xs font-semibold text-amber-900 bg-amber-50 border border-amber-200 px-2 py-1 rounded mt-1 w-fit">Obs: {item.observation}</span>}</div>
             </li>
           ))}
         </ul>
