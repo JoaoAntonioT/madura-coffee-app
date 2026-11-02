@@ -165,7 +165,7 @@ export default function Menu() {
               <div className="bg-white/20 p-2 rounded-full">
                 <ShoppingBag size={20} />
               </div>
-              <span className="font-bold flex items-center gap-2">Ver sacola <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">{totalItems}</span></span>
+              <span className="font-bold">{totalItems} {totalItems === 1 ? 'item' : 'itens'}</span>
             </div>
             <span className="font-bold text-lg">{formatPrice(totalPrice)}</span>
           </Link>

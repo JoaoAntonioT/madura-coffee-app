@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Lock, Coffee, Users, LogOut, CheckCircle, Store, DollarSign, Loader2, UserPlus, LayoutDashboard, Package, Plus, Trash2, Search, Clock, X, Banknote, CreditCard, Ban, Check, History, Download, RotateCcw, AlertTriangle, ClipboardList, Settings } from 'lucide-react'
 import { cadastrarMembro, confirmarPagamento, marcarPronto, atualizarReceitaProduto, assumirPedido, limparPedidosExpirados, cancelarPedido, marcarComoEntregue, reativarPedido, reembolsarPedido, salvarInsumoEstoque, excluirInsumoEstoque, adicionarCategoria, editarCategoria, moverCategoria, excluirCategoria, salvarProduto, toggleProdutoDisponivel, excluirProduto, atualizarMetodosPagamento } from './actions'
@@ -97,31 +97,80 @@ export default function Balcao() {
   }, [])
 
   // ==========================================
-  // RELÓGIO, BUSCA E LIMPEZA DE EXPIRADOS
+  // FUNÇÕES DE BUSCA REUTILIZÁVEIS
+  // ==========================================
+  const fetchOrders = useCallback(async () => {
+    const { data } = await supabase
+      .from('orders')
+      .select('*, order_items(*)')
+      .in('status', ['CREATED', 'PENDING', 'AWAITING_PAYMENT', 'AWAITING_MANUAL_PAYMENT', 'PAID', 'IN_PRODUCTION', 'READY'])
+      .order('created_at', { ascending: true })
+
+    if (data) {
+      let filtrados = data
+      if (activeTab === 'CAIXA') {
+        filtrados = data.filter(o => o.status === 'CREATED' || o.status === 'PENDING' || o.status.includes('AWAITING'))
+      } 
+      else if (activeTab === 'PREPARO') {
+        filtrados = data.filter(o => o.status === 'PAID' || o.status === 'IN_PRODUCTION')
+      } 
+      else if (activeTab === 'ATENDIMENTO') {
+        filtrados = data.filter(o => 
+          o.status === 'PAID' || o.status === 'IN_PRODUCTION' || 
+          o.status === 'CREATED' || o.status === 'PENDING' || o.status.includes('AWAITING') || o.status === 'READY'
+        )
+      }
+      setOrders(filtrados)
+    }
+  }, [activeTab])
+
+  const fetchHistorico = useCallback(async () => {
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+
+    const { data } = await supabase
+      .from('orders')
+      .select('*, order_items(*)')
+      .in('status', ['DELIVERED', 'CANCELLED', 'EXPIRED', 'REFUNDED'])
+      .gte('created_at', startOfDay.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(100)
+      
+    if (data) setHistorico(data)
+    
+    if (teamMembers.length === 0) {
+      const { data: tData } = await supabase.from('team').select('id, name')
+      if (tData) setTeamMembers(tData)
+    }
+  }, [teamMembers.length])
+
+  const fetchCatalog = useCallback(async () => {
+    const { data: catData } = await supabase.from('categories').select('*').order('sort_order')
+    if (catData) setCategories(catData)
+
+    const { data: prodData } = await supabase.from('products').select('*').order('name')
+    if (prodData) setProductsList(prodData)
+
+    if (estoque.length === 0) {
+      const { data: inv } = await supabase.from('inventory').select('*').order('name')
+      if (inv) setEstoque(inv)
+    }
+  }, [estoque.length])
+
+  // ==========================================
+  // RELÓGIO, REALTIME E LIMPEZA DE EXPIRADOS
   // ==========================================
   useEffect(() => {
     if (!user || activeTab === 'EQUIPE') return
 
-    if (activeTab === 'HISTORICO') {
-      const fetchHistorico = async () => {
-        const startOfDay = new Date()
-        startOfDay.setHours(0, 0, 0, 0)
+    // Carrega equipe em background para mostrar nomes nos cards de preparo
+    if (teamMembers.length === 0) {
+      supabase.from('team').select('id, name').then(({ data }) => {
+        if (data) setTeamMembers(data)
+      })
+    }
 
-        const { data } = await supabase
-          .from('orders')
-          .select('*, order_items(*)')
-          .in('status', ['DELIVERED', 'CANCELLED', 'EXPIRED', 'REFUNDED'])
-          .gte('created_at', startOfDay.toISOString())
-          .order('created_at', { ascending: false })
-          .limit(100)
-          
-        if (data) setHistorico(data)
-        
-        if (teamMembers.length === 0) {
-          const { data: tData } = await supabase.from('team').select('id, name')
-          if (tData) setTeamMembers(tData)
-        }
-      }
+    if (activeTab === 'HISTORICO') {
       fetchHistorico()
       return
     }
@@ -136,19 +185,7 @@ export default function Balcao() {
     }
 
     if (activeTab === 'PRODUTOS') {
-      const fetchData = async () => {
-        const { data: catData } = await supabase.from('categories').select('*').order('sort_order')
-        if (catData) setCategories(catData)
-
-        const { data: prodData } = await supabase.from('products').select('*').order('name')
-        if (prodData) setProductsList(prodData)
-
-        if (estoque.length === 0) {
-          const { data: inv } = await supabase.from('inventory').select('*').order('name')
-          if (inv) setEstoque(inv)
-        }
-      }
-      fetchData()
+      fetchCatalog()
       return
     }
 
@@ -161,39 +198,36 @@ export default function Balcao() {
       return
     }
 
-    setOrders([]) 
-
-    const fetchOrders = async () => {
-      await limparPedidosExpirados()
-
-      const { data } = await supabase
-        .from('orders')
-        .select('*, order_items(*)')
-        .in('status', ['CREATED', 'PENDING', 'AWAITING_PAYMENT', 'AWAITING_MANUAL_PAYMENT', 'PAID', 'IN_PRODUCTION', 'READY'])
-        .order('created_at', { ascending: true })
-
-      if (data) {
-        let filtrados = data
-        if (activeTab === 'CAIXA') {
-          filtrados = data.filter(o => o.status === 'CREATED' || o.status === 'PENDING' || o.status.includes('AWAITING'))
-        } 
-        else if (activeTab === 'PREPARO') {
-          filtrados = data.filter(o => o.status === 'PAID' || o.status === 'IN_PRODUCTION')
-        } 
-        else if (activeTab === 'ATENDIMENTO') {
-          filtrados = data.filter(o => 
-            o.status === 'PAID' || o.status === 'IN_PRODUCTION' || 
-            o.status === 'CREATED' || o.status === 'PENDING' || o.status.includes('AWAITING') || o.status === 'READY'
-          )
-        }
-        setOrders(filtrados)
-      }
-    }
-
+    // 1. Busca imediata sem bloquear pela limpeza de expirados
     fetchOrders()
-    const interval = setInterval(fetchOrders, 5000)
-    return () => clearInterval(interval)
-  }, [user, activeTab])
+
+    // 2. Canal Realtime (WebSocket) para atualizar instantaneamente em INSERT/UPDATE/DELETE
+    const channel = supabase
+      .channel(`balcao-orders-${activeTab}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          fetchOrders()
+        }
+      )
+      .subscribe()
+
+    // 3. Polling rápido de segurança (2.5s)
+    const interval = setInterval(fetchOrders, 2500)
+
+    // 4. Limpeza de pedidos expirados desacoplada (a cada 30s) para não atrasar a leitura
+    limparPedidosExpirados()
+    const cleanupInterval = setInterval(() => {
+      limparPedidosExpirados()
+    }, 30000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      clearInterval(cleanupInterval)
+    }
+  }, [user, activeTab, fetchOrders, fetchHistorico, fetchCatalog, teamMembers.length])
 
   // ==========================================
   // HANDLERS E AÇÕES
@@ -227,7 +261,9 @@ export default function Balcao() {
       const res = await cadastrarMembro(formData)
       if (res.success) { 
         alert('Membro cadastrado!')
-        form.reset() 
+        form.reset()
+        const { data: tData } = await supabase.from('team').select('id, name')
+        if (tData) setTeamMembers(tData)
       }
       else {
         alert(`Erro: ${res.error}`)
@@ -244,7 +280,10 @@ export default function Balcao() {
         ? await editarCategoria(categoryModal.id, categoryModal.name)
         : await adicionarCategoria(categoryModal.name, categoryModal.sort_order)
       
-      if (res.success) setCategoryModal(null)
+      if (res.success) {
+        setCategoryModal(null)
+        await fetchCatalog()
+      }
       else alert(`Erro: ${res.error}`)
     })
   }
@@ -253,7 +292,10 @@ export default function Balcao() {
     if (!confirm('Deseja excluir esta categoria? Os produtos precisam ser realocados antes.')) return
     startTransition(async () => {
       const res = await excluirCategoria(id)
-      if (res.success) setCategoryModal(null)
+      if (res.success) {
+        setCategoryModal(null)
+        await fetchCatalog()
+      }
       else alert(`Erro: ${res.error}`)
     })
   }
@@ -261,6 +303,7 @@ export default function Balcao() {
   const handleMoverCategoria = (id: string, currentOrder: number, direction: 'up' | 'down') => {
     startTransition(async () => {
       await moverCategoria(id, currentOrder, direction)
+      await fetchCatalog()
     })
   }
 
@@ -269,7 +312,10 @@ export default function Balcao() {
     if (!produtoModal) return
     startTransition(async () => {
       const res = await salvarProduto(produtoModal.id || null, produtoModal.category_id, produtoModal.name, produtoModal.description, produtoModal.price)
-      if (res.success) setProdutoModal(null)
+      if (res.success) {
+        setProdutoModal(null)
+        await fetchCatalog()
+      }
       else alert(`Erro: ${res.error}`)
     })
   }
@@ -277,6 +323,7 @@ export default function Balcao() {
   const handleToggleProduto = (id: string, is_available: boolean) => {
     startTransition(async () => {
       await toggleProdutoDisponivel(id, is_available)
+      await fetchCatalog()
     })
   }
 
@@ -284,7 +331,10 @@ export default function Balcao() {
     if (!confirm('Excluir este produto permanentemente?')) return
     startTransition(async () => {
       const res = await excluirProduto(id)
-      if (res.success) setProdutoModal(null)
+      if (res.success) {
+        setProdutoModal(null)
+        await fetchCatalog()
+      }
       else alert(`Erro: ${res.error}`)
     })
   }
@@ -295,6 +345,7 @@ export default function Balcao() {
       const res = await confirmarPagamento(orderId, tipo)
       if (!res.success) alert(`Erro: ${res.error}`)
       setCheckoutModalOrder(null)
+      await fetchOrders()
       setLoadingId(null)
     })
   }
@@ -305,6 +356,7 @@ export default function Balcao() {
       const res = await cancelarPedido(orderId)
       if (!res.success) alert(`Erro: ${res.error}`)
       setCancelModalOrder(null)
+      await fetchOrders()
       setLoadingId(null)
     })
   }
@@ -315,6 +367,7 @@ export default function Balcao() {
     startTransition(async () => {
       const res = await assumirPedido(orderId, user.id)
       if (!res.success) alert(`Aviso: ${res.error}`)
+      await fetchOrders()
       setLoadingId(null)
     })
   }
@@ -324,6 +377,7 @@ export default function Balcao() {
     startTransition(async () => {
       const res = await marcarPronto(orderId)
       if (!res.success) alert(`Erro: ${res.error}`)
+      await fetchOrders()
       setLoadingId(null)
     })
   }
@@ -333,6 +387,7 @@ export default function Balcao() {
     startTransition(async () => {
       const res = await marcarComoEntregue(orderId)
       if (!res.success) alert(`Erro: ${res.error}`)
+      await fetchOrders()
       setLoadingId(null)
     })
   }
@@ -343,7 +398,10 @@ export default function Balcao() {
     startTransition(async () => {
       const res = await reativarPedido(orderId)
       if (!res.success) alert(`Erro: ${res.error}`)
-      else setDetailModalOrder(null)
+      else {
+        setDetailModalOrder(null)
+        await fetchHistorico()
+      }
       setLoadingId(null)
     })
   }
@@ -364,6 +422,7 @@ export default function Balcao() {
         alert('Reembolso/Cancelamento processado com sucesso.')
         setDetailModalOrder(null)
         setRefundStep(0)
+        await fetchHistorico()
       }
       setLoadingId(null)
     })
@@ -1246,9 +1305,15 @@ function OrderCaixaCard({ order, user, onOpenCheckout, onOpenCancel }: any) {
       ) : (
         (user.role === 'ADMIN' || user.role === 'VENDEDOR') && (
           <div className="flex gap-2 mt-2">
-            <button onClick={() => onOpenCheckout(order)} className="flex-1 bg-green text-white py-2 rounded-lg text-sm font-bold hover:bg-green transition flex justify-center items-center gap-2">
-              <DollarSign size={16} /> Receber
-            </button>
+                          <button
+                              onClick={() => onOpenCheckout(order)}
+                              className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2"
+                          >
+                              <DollarSign size={16} /> Receber
+                          </button>
+                          <button onClick={() => onOpenCancel(order)} className="bg-red-50 text-red px-3 py-2 rounded-lg text-sm font-bold hover:bg-red transition border border-red-200 flex justify-center items-center" title="Cancelar Pedido">
+                              <Ban size={16} />
+                          </button>
             <button onClick={() => onOpenCancel(order)} className="bg-red-50 text-red px-3 py-2 rounded-lg text-sm font-bold hover:bg-red transition border border-red-200 flex justify-center items-center" title="Cancelar Pedido">
               <Ban size={16} />
             </button>
@@ -1307,9 +1372,17 @@ function OrderRetiradaCard({ order, isPending, loadingId, onEntregar }: any) {
         <p className="text-medium-brown font-medium text-sm">{order.customer_name}</p>
       </div>
 
-      <button onClick={() => onEntregar(order.id)} disabled={isPending && loadingId === order.id} className="mt-2 bg-green text-white py-3 rounded-lg text-sm font-bold hover:bg-green transition flex justify-center items-center gap-2 disabled:opacity-50">
-        {isPending && loadingId === order.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Entregar Pedido
-      </button>
+      <button
+  onClick={() => onEntregar(order.id)}
+  disabled={isPending && loadingId === order.id}
+  className="mt-2 bg-green-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2 disabled:opacity-50"
+>
+  {isPending && loadingId === order.id
+    ? <Loader2 size={16} className="animate-spin" />
+    : <Check size={16} />
+  }
+  Entregar Pedido
+</button>
     </div>
   )
 }
