@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, X, ShoppingBag, ArrowRight, ClipboardList, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, X, ShoppingBag, ArrowRight, ClipboardList, ChevronUp, ChevronDown, Search } from 'lucide-react'
 import { useCartStore } from '../lib/store'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -28,6 +28,7 @@ export default function Menu() {
   const [observation, setObservation] = useState('')
   const [activeToken, setActiveToken] = useState<string | null>(null)
   const [isBottomMenuOpen, setIsBottomMenuOpen] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const addItem = useCartStore(state => state.addItem)
   const totalItems = useCartStore(state => state.totalItems())
@@ -93,7 +94,27 @@ export default function Menu() {
       </header>
 
       <div className="max-w-md mx-auto p-4 space-y-8">
-        {categories.map((category) => (
+        <div className="relative">
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-custom-gray" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar café, bebida ou lanche..."
+            className="w-full bg-white border border-custom-border/20 rounded-xl pl-10 pr-10 py-3 text-sm text-[#3E2723] font-medium placeholder:text-custom-gray shadow-sm focus:border-[#3E2723] outline-none"
+          />
+          {searchQuery && (
+            <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-custom-gray hover:text-[#3E2723] p-1">
+              <X size={16} />
+            </button>
+          )}
+        </div>
+        {categories.map((cat) => {
+          const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          const q = norm(searchQuery.trim())
+          const filteredProducts = q ? cat.products.filter(p => norm(p.name).includes(q) || norm(p.description).includes(q) || norm(cat.name).includes(q)) : cat.products
+          return { ...cat, products: filteredProducts }
+        }).filter(cat => cat.products.length > 0).map((category) => (
           <section key={category.id}>
             <h2 className="text-2xl font-black text-[#3E2723] mb-4 border-b border-custom-border/20-2 border-[#3E2723] pb-2">
               {category.name}
