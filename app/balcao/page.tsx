@@ -665,7 +665,7 @@ export default function Balcao() {
         {/* ABA PRODUTOS E RECEITAS */}
         {activeTab === 'PRODUTOS' && (
           <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex items-center justify-between border-b border-custom-border/20 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-custom-border/20 pb-4">
               <div className="flex items-center gap-2">
                 <Package className="text-[#3E2723]" size={24} />
                 <h2 className="text-xl font-black text-[#3E2723]">Cardápio & Fichas Técnicas</h2>
@@ -721,19 +721,19 @@ export default function Balcao() {
                         <div className="p-4">
                           <div className="space-y-3">
                             {catProducts.map(prod => (
-                              <div key={prod.id} className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${!prod.is_available ? 'bg-white opacity-60' : 'hover:bg-white'}`}>
+                              <div key={prod.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3 transition-colors ${!prod.is_available ? 'bg-white opacity-60' : 'hover:bg-white'}`}>
                                 <div className="flex-1">
                                   <div className="flex justify-between items-start">
                                     <div>
                                       <p className="font-bold text-[#3E2723]">{prod.name}</p>
-                                      <p className="text-sm text-custom-gray mt-1 max-w-lg truncate">{prod.description}</p>
+                                      <p className="text-sm text-custom-gray mt-1 line-clamp-2 max-w-lg">{prod.description}</p>
                                     </div>
                                     <div className="text-right ml-4">
                                       <p className="font-black text-[#3E2723]">R$ {prod.price?.toFixed(2)}</p>
                                     </div>
                                   </div>
                                 </div>
-                                <div className="ml-6 flex items-center gap-4 border-l pl-4">
+                                <div className="sm:ml-6 flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 sm:border-l pt-2 sm:pt-0 sm:pl-4">
                                   <label className="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" checked={prod.is_available} onChange={(e) => handleToggleProduto(prod.id, e.target.checked)} className="w-4 h-4 accent-yellow cursor-pointer" />
                                     <span className={`text-sm font-bold ${prod.is_available ? 'text-green' : 'text-red'}`}>
@@ -761,8 +761,8 @@ export default function Balcao() {
 
         {/* ABA HISTÓRICO */}
         {activeTab === 'HISTORICO' && (
-          <div className="bg-white p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden">
-            <div className="flex justify-between items-center mb-6 border-b border-custom-border/20 pb-4">
+          <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden">
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-4 sm:mb-6 border-b border-custom-border/20 pb-3 sm:pb-4">
               <div className="flex items-center gap-2">
                 <History className="text-[#3E2723]" size={24} />
                 <h2 className="text-xl font-black text-[#3E2723]">Histórico de Hoje</h2>
@@ -789,14 +789,14 @@ export default function Balcao() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[600px]">
+              <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-white border-b border-custom-border/20 border-custom-border/20 text-medium-brown text-sm">
                     <th className="p-3 font-bold">Pedido</th>
                     <th className="p-3 font-bold">Cliente</th>
-                    <th className="p-3 font-bold">Horário</th>
+                    <th className="p-2 sm:p-3 font-bold hidden sm:table-cell">Horário</th>
                     <th className="p-3 font-bold">Status</th>
-                    <th className="p-3 font-bold">Pagamento</th>
+                    <th className="p-2 sm:p-3 font-bold hidden sm:table-cell">Pagamento</th>
                     <th className="p-3 font-bold">Valor</th>
                   </tr>
                 </thead>
@@ -810,9 +810,9 @@ export default function Balcao() {
                       .filter(order => historicoFilter === 'ALL' || order.status === historicoFilter)
                       .map(order => (
                       <tr key={order.id} onClick={() => setDetailModalOrder(order)} className="border-b border-custom-border/20 border-custom-border/10 hover:bg-white transition cursor-pointer">
-                        <td className="p-3 font-bold text-[#3E2723]">#{order.short_id}</td>
-                        <td className="p-3 text-medium-brown font-medium">{order.customer_name}</td>
-                        <td className="p-3 text-custom-gray text-sm">{new Date(order.created_at).toLocaleTimeString('pt-BR')}</td>
+                        <td className="p-2 sm:p-3 font-bold text-[#3E2723] text-xs sm:text-sm">#{order.short_id}</td>
+                        <td className="p-2 sm:p-3 text-medium-brown font-medium text-xs sm:text-sm">{order.customer_name}</td>
+                        <td className="p-2 sm:p-3 text-custom-gray text-sm hidden sm:table-cell">{new Date(order.created_at).toLocaleTimeString('pt-BR')}</td>
                         <td className="p-3">
                           <span className={`px-2 py-1 rounded text-xs font-bold ${
                             order.status === 'DELIVERED' ? 'bg-green text-green' :
@@ -823,8 +823,8 @@ export default function Balcao() {
                             {order.status === 'DELIVERED' ? 'ENTREGUE' : order.status === 'CANCELLED' ? 'CANCELADO' : order.status === 'REFUNDED' ? 'REEMBOLSADO' : 'EXPIRADO'}
                           </span>
                         </td>
-                        <td className="p-3 text-custom-gray text-sm">{order.payment_method || '-'}</td>
-                        <td className="p-3 font-black text-[#3E2723]">R$ {order.total_amount.toFixed(2)}</td>
+                        <td className="p-2 sm:p-3 text-custom-gray text-sm hidden sm:table-cell">{order.payment_method || '-'}</td>
+                        <td className="p-2 sm:p-3 font-black text-[#3E2723] text-xs sm:text-sm whitespace-nowrap">R$ {order.total_amount.toFixed(2)}</td>
                       </tr>
                     ))
                   )}
@@ -836,8 +836,8 @@ export default function Balcao() {
 
         {/* ABA ESTOQUE */}
         {activeTab === 'ESTOQUE' && (
-          <div className="bg-white p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden">
-            <div className="flex justify-between items-center mb-6 border-b border-custom-border/20 pb-4">
+          <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden">
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-4 sm:mb-6 border-b border-custom-border/20 pb-3 sm:pb-4">
               <div className="flex items-center gap-2">
                 <ClipboardList className="text-[#3E2723]" size={24} />
                 <h2 className="text-xl font-black text-[#3E2723]">Estoque de Insumos</h2>
@@ -851,12 +851,12 @@ export default function Balcao() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[600px]">
+              <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-white border-b border-custom-border/20 border-custom-border/20 text-medium-brown text-sm">
-                    <th className="p-3 font-bold">Insumo</th>
-                    <th className="p-3 font-bold text-center">Quantidade Atual</th>
-                    <th className="p-3 font-bold">Unidade</th>
+                    <th className="p-2 sm:p-3 font-bold text-xs sm:text-sm">Insumo</th>
+                    <th className="p-2 sm:p-3 font-bold text-center text-xs sm:text-sm"><span className="sm:hidden">Qtd</span><span className="hidden sm:inline">Quantidade Atual</span></th>
+                    <th className="p-2 sm:p-3 font-bold text-xs sm:text-sm"><span className="sm:hidden">Un.</span><span className="hidden sm:inline">Unidade</span></th>
                     <th className="p-3 font-bold">Status</th>
                   </tr>
                 </thead>
@@ -871,9 +871,9 @@ export default function Balcao() {
                   ) : (
                     estoque.map(item => (
                       <tr key={item.id} onClick={() => { const bQty = item.unit === 'kg' ? Number(item.quantity) * 1000 : item.unit === 'L' ? Number(item.quantity) * 1000 : Number(item.quantity); const bUnit = ['kg', 'g'].includes(item.unit) ? 'g' : ['L', 'ml'].includes(item.unit) ? 'ml' : 'un'; setInsumoModal({ ...item, quantity: bQty, unit: bUnit }); }} className="border-b border-custom-border/20 border-custom-border/10 hover:bg-amber-50/40 transition cursor-pointer" title="Clique para editar este insumo">
-                        <td className="p-3 font-bold text-[#3E2723]">{item.name}</td>
-                        <td className="p-3 font-black text-xl text-[#3E2723] text-center">{item.unit === 'kg' ? Number(item.quantity) * 1000 : item.unit === 'L' ? Number(item.quantity) * 1000 : item.quantity}</td>
-                        <td className="p-3 text-custom-gray font-bold">{['kg', 'g'].includes(item.unit) ? 'g' : ['L', 'ml'].includes(item.unit) ? 'ml' : 'un'}</td>
+                        <td className="p-2 sm:p-3 font-bold text-[#3E2723] text-xs sm:text-sm break-words">{item.name}</td>
+                        <td className="p-2 sm:p-3 font-black text-base sm:text-xl text-[#3E2723] text-center">{item.unit === 'kg' ? Number(item.quantity) * 1000 : item.unit === 'L' ? Number(item.quantity) * 1000 : item.quantity}</td>
+                        <td className="p-2 sm:p-3 text-custom-gray font-bold text-xs sm:text-sm">{['kg', 'g'].includes(item.unit) ? 'g' : ['L', 'ml'].includes(item.unit) ? 'ml' : 'un'}</td>
                         <td className="p-3">
                           {item.quantity <= 0 ? (
                             <span className="bg-red text-red px-2 py-1 rounded text-xs font-bold">ESGOTADO</span>
@@ -949,7 +949,7 @@ export default function Balcao() {
                 </ul>
               </div>
 
-              <div className="flex justify-between items-center mb-6 border-b border-custom-border/20 pb-4">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-4 sm:mb-6 border-b border-custom-border/20 pb-3 sm:pb-4">
                 <span className="font-bold text-custom-gray">TOTAL A COBRAR</span>
                 <span className="text-2xl font-black text-[#3E2723]">R$ {checkoutModalOrder.total_amount.toFixed(2)}</span>
               </div>
@@ -1187,8 +1187,8 @@ export default function Balcao() {
 
         {/* ========================================== */}
         {activeTab === 'ESTOQUE' && (
-          <div className="bg-white p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden mt-6">
-            <div className="flex justify-between items-center mb-4 border-b border-custom-border/20 pb-3">
+          <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border max-w-5xl mx-auto overflow-hidden mt-6">
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-4 border-b border-custom-border/20 pb-3">
               <div className="flex items-center gap-2">
                 <History className="text-[#3E2723]" size={22} />
                 <h3 className="text-lg font-black text-[#3E2723]">Histórico de Entradas e Compras</h3>
@@ -1198,14 +1198,14 @@ export default function Balcao() {
               </span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[600px]">
+              <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-custom-border/20 text-medium-brown text-xs uppercase">
-                    <th className="p-3 font-bold">Data da Compra</th>
-                    <th className="p-3 font-bold">Insumo</th>
-                    <th className="p-3 font-bold">Compra (Embalagens)</th>
-                    <th className="p-3 font-bold text-center">Entrada Normalizada</th>
-                    <th className="p-3 font-bold text-right">Valor Gasto</th>
+                    <th className="p-2 sm:p-3 font-bold">Data</th>
+                    <th className="p-2 sm:p-3 font-bold">Insumo</th>
+                    <th className="p-2 sm:p-3 font-bold hidden sm:table-cell">Compra (Embalagens)</th>
+                    <th className="p-2 sm:p-3 font-bold text-center">Entrada</th>
+                    <th className="p-2 sm:p-3 font-bold text-right">Valor</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1217,18 +1217,21 @@ export default function Balcao() {
                     </tr>
                   ) : (
                     entradasEstoque.map((ent) => (
-                      <tr key={ent.id} className="border-b border-custom-border/10 text-sm">
-                        <td className="p-3 text-custom-gray font-medium">
-                          {ent.purchase_date ? new Date(ent.purchase_date + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                      <tr key={ent.id} className="border-b border-custom-border/10 text-xs sm:text-sm">
+                        <td className="p-2 sm:p-3 text-custom-gray font-medium whitespace-nowrap">
+                          {ent.purchase_date ? new Date(ent.purchase_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '-'}
                         </td>
-                        <td className="p-3 font-bold text-[#3E2723]">{ent.ingredient_name}</td>
-                        <td className="p-3 text-medium-brown">
+                        <td className="p-2 sm:p-3 font-bold text-[#3E2723]">
+                          {ent.ingredient_name}
+                          <span className="block sm:hidden text-[11px] font-normal text-custom-gray">{ent.packages_count}x de {ent.package_size} {ent.package_unit}</span>
+                        </td>
+                        <td className="p-2 sm:p-3 text-medium-brown hidden sm:table-cell">
                           {ent.packages_count}x de {ent.package_size} {ent.package_unit}
                         </td>
-                        <td className="p-3 font-black text-green-700 text-center">
+                        <td className="p-2 sm:p-3 font-black text-green-700 text-center whitespace-nowrap">
                           +{ent.added_quantity_base} {ent.base_unit}
                         </td>
-                        <td className="p-3 font-black text-[#3E2723] text-right">
+                        <td className="p-2 sm:p-3 font-black text-[#3E2723] text-right whitespace-nowrap">
                           R$ {Number(ent.total_cost || 0).toFixed(2)}
                         </td>
                       </tr>
@@ -1676,7 +1679,7 @@ function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: a
                     if (selItem) newIng[idx].unit = selItem.unit; // Auto-preenche a unidade
                     setIngredients(newIng) 
                   }} 
-                  className="flex-1 border rounded p-2 text-sm outline-none focus:border-[#3E2723] bg-white"
+                  className="flex-1 min-w-0 border rounded p-2 text-xs sm:text-sm outline-none focus:border-[#3E2723] bg-white"
                 >
                   <option value="" disabled>Selecione um insumo...</option>
                   {estoque.map(item => (
@@ -1686,8 +1689,8 @@ function RecipeFormCard({ product, estoque }: { product: ProductInfo, estoque: a
                     <option value={ing.name}>{ing.name} (Fora do Estoque)</option>
                   )}
                 </select>
-                <input type="number" placeholder="Qtd" value={ing.quantity} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].quantity = Number(e.target.value); setIngredients(newIng) }} className="w-16 border rounded p-2 text-sm outline-none focus:border-[#3E2723]" />
-                <select value={ing.unit} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].unit = e.target.value; setIngredients(newIng) }} className="w-20 border rounded p-2 text-sm font-bold text-[#3E2723] outline-none focus:border-[#3E2723] bg-white">{['g', 'kg'].includes(ing.unit) ? (<><option value="g">g</option><option value="kg">kg</option></>) : ['ml', 'L'].includes(ing.unit) ? (<><option value="ml">ml</option><option value="L">L</option></>) : (<option value={ing.unit}>{ing.unit}</option>)}</select>
+                <input type="number" placeholder="Qtd" value={ing.quantity} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].quantity = Number(e.target.value); setIngredients(newIng) }} className="w-14 sm:w-16 border rounded p-2 text-xs sm:text-sm outline-none focus:border-[#3E2723]" />
+                <select value={ing.unit} onChange={(e) => { const newIng = [...ingredients]; newIng[idx].unit = e.target.value; setIngredients(newIng) }} className="w-14 sm:w-20 border rounded p-2 text-xs sm:text-sm font-bold text-[#3E2723] outline-none focus:border-[#3E2723] bg-white">{['g', 'kg'].includes(ing.unit) ? (<><option value="g">g</option><option value="kg">kg</option></>) : ['ml', 'L'].includes(ing.unit) ? (<><option value="ml">ml</option><option value="L">L</option></>) : (<option value={ing.unit}>{ing.unit}</option>)}</select>
                 <button type="button" onClick={() => setIngredients(ingredients.filter((_, i) => i !== idx))} className="text-red p-2 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
               </div>
             ))}
