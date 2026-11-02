@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, X, ShoppingBag, ArrowRight } from 'lucide-react'
+import { Plus, X, ShoppingBag, ArrowRight, ClipboardList, ChevronUp, ChevronDown } from 'lucide-react'
 import { useCartStore } from '../lib/store'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -27,6 +27,7 @@ export default function Menu() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [observation, setObservation] = useState('')
   const [activeToken, setActiveToken] = useState<string | null>(null)
+  const [isBottomMenuOpen, setIsBottomMenuOpen] = useState(true)
 
   const addItem = useCartStore(state => state.addItem)
   const totalItems = useCartStore(state => state.totalItems())
@@ -36,7 +37,7 @@ export default function Menu() {
     // 1. Verifica se o cliente tem um pedido em andamento salvo no celular
     const token = localStorage.getItem('active_order_token')
     if (token) {
-      supabase.from('orders').select('status').eq('token', token).single().then(({ data }) => { if (data && !['DELIVERED', 'CANCELLED', 'REFUNDED', 'EXPIRED'].includes(data.status)) { setActiveToken(token) } else { localStorage.removeItem('active_order_token'); setActiveToken(null) } })
+      const savedTokens = JSON.parse(localStorage.getItem('order_tokens_history') || '[]'); if (!savedTokens.includes(token)) localStorage.setItem('order_tokens_history', JSON.stringify([token, ...savedTokens])); supabase.from('orders').select('status').eq('token', token).single().then(({ data }) => { if (data && !['DELIVERED', 'CANCELLED', 'REFUNDED', 'EXPIRED'].includes(data.status)) { setActiveToken(token) } else { localStorage.removeItem('active_order_token'); setActiveToken(null) } })
     }
 
     async function fetchMenu() {
@@ -158,8 +159,36 @@ export default function Menu() {
         </div>
       )}
 
-      {totalItems > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto z-40">
+      {true && (
+        <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto z-40 bg-[#3E2723] text-white rounded-2xl shadow-xl overflow-hidden">
+          <button type="button" onClick={() => setIsBottomMenuOpen(!isBottomMenuOpen)} className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider bg-black/15 hover:bg-black/25 transition cursor-pointer">
+            <span>{totalItems > 0 ? `${totalItems} ${totalItems === 1 ? 'item' : 'itens'} • ${formatPrice(totalPrice)}` : 'Menu do Cliente'}</span>
+            <span className="flex items-center gap-1">{isBottomMenuOpen ? <>Recolher <ChevronDown size={16} /></> : <>Abrir <ChevronUp size={16} /></>}</span>
+          </button>
+          {isBottomMenuOpen && (
+            <div className="p-3 space-y-2">
+              {totalItems > 0 && (
+                <Link href="/checkout" className="bg-white/10 p-3 rounded-xl flex items-center justify-between hover:bg-white/20 transition-transform active:scale-95">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-white/20 p-2 rounded-full"><ShoppingBag size={20} /></div>
+                    <span className="font-bold">Finalizar ({totalItems} {totalItems === 1 ? 'item' : 'itens'})</span>
+                  </div>
+                  <span className="font-bold text-lg">{formatPrice(totalPrice)}</span>
+                </Link>
+              )}
+              <Link href="/pedidos" className="bg-white/10 p-3 rounded-xl flex items-center justify-between hover:bg-white/20 transition-transform active:scale-95">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/20 p-2 rounded-full"><ClipboardList size={20} /></div>
+                  <span className="font-bold">Ver Meus Pedidos</span>
+                </div>
+                <ArrowRight size={18} />
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+      {false && (
+        <div>
           <Link href="/checkout" className="bg-[#3E2723] text-white p-4 rounded-2xl shadow-xl flex items-center justify-between hover:bg-[#4E342E] transition-transform active:scale-95">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-full">

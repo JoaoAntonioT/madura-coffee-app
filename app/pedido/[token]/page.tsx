@@ -63,6 +63,10 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
   }
 
   useEffect(() => {
+    const savedTokens = JSON.parse(localStorage.getItem('order_tokens_history') || '[]')
+    if (token && !savedTokens.includes(token)) {
+      localStorage.setItem('order_tokens_history', JSON.stringify([token, ...savedTokens]))
+    }
     fetchOrder()
     
     const channel = supabase
@@ -86,7 +90,11 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
     // O relógio atualiza a tela a cada 5s se estiver no PIX ou no Caixa (aguardando o barista)
     if (true) {
       interval = setInterval(() => {
-        fetchOrder()
+        const savedTokens = JSON.parse(localStorage.getItem('order_tokens_history') || '[]')
+    if (token && !savedTokens.includes(token)) {
+      localStorage.setItem('order_tokens_history', JSON.stringify([token, ...savedTokens]))
+    }
+    fetchOrder()
       }, 5000)
     }
 
@@ -189,7 +197,11 @@ export default function OrderStatus({ params }: { params: Promise<{ token: strin
             alert('Cartão recusado pelo emissor. Verifique os dados, o limite e tente novamente.')
             reject()
           } else {
-            fetchOrder()
+            const savedTokens = JSON.parse(localStorage.getItem('order_tokens_history') || '[]')
+    if (token && !savedTokens.includes(token)) {
+      localStorage.setItem('order_tokens_history', JSON.stringify([token, ...savedTokens]))
+    }
+    fetchOrder()
             resolve()
           }
         })

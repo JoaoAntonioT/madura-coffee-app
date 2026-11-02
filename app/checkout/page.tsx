@@ -63,6 +63,10 @@ export default function Checkout() {
 
     // 4. Sucesso! Salva o Token no celular do cliente e limpa o carrinho
     localStorage.setItem('active_order_token', order.token)
+    const savedTokens = JSON.parse(localStorage.getItem('order_tokens_history') || '[]')
+    if (!savedTokens.includes(order.token)) {
+      localStorage.setItem('order_tokens_history', JSON.stringify([order.token, ...savedTokens]))
+    }
     clearCart()
     
     // 5. Redireciona para a tela de acompanhamento
