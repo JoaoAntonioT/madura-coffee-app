@@ -1383,6 +1383,17 @@ function OrderRetiradaCard({ order, isPending, loadingId, onEntregar }: any) {
   }
   Entregar Pedido
 </button>
+      <button
+  onClick={() => onEntregar(order.id)}
+  disabled={isPending && loadingId === order.id}
+  className="mt-2 bg-green-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-green-700 transition flex justify-center items-center gap-2 disabled:opacity-50"
+>
+  {isPending && loadingId === order.id
+    ? <Loader2 size={16} className="animate-spin" />
+    : <Check size={16} />
+  }
+  Entregar Pedido
+</button>
     </div>
   )
 }
